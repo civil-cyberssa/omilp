@@ -1,19 +1,13 @@
 "use client"
 
 import { useRef } from "react"
-import { useFrame, useLoader } from "@react-three/fiber"
-import { GLTFLoader, GLTF } from "three-stdlib"
+import { useFrame } from "@react-three/fiber"
+import { useGLTF } from "@react-three/drei"
 import { Group } from "three"
 
 export default function OmiModel() {
   const modelRef = useRef<Group>(null)
-  let gltf: GLTF | null = null
-  try {
-    gltf = useLoader(GLTFLoader, "/omi.glb")
-  } catch (error) {
-    console.error("Failed to load GLTF model:", error)
-    return null
-  }
+  const { scene } = useGLTF("omi.glb")
 
   useFrame(() => {
     if (modelRef.current) {
@@ -21,5 +15,8 @@ export default function OmiModel() {
     }
   })
 
-  return <primitive ref={modelRef} object={gltf.scene} dispose={null} />
+  return <primitive ref={modelRef} object={scene} dispose={null} />
 }
+
+useGLTF.preload("omi.glb")
+
