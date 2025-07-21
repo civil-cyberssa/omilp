@@ -1,17 +1,9 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, Suspense } from "react"
 import { Canvas } from "@react-three/fiber"
-import { OrbitControls, Environment, Float, Sphere } from "@react-three/drei"
-
-// Componente 3D simplificado
-function SimpleModel() {
-  return (
-    <Sphere args={[1, 32, 32]}>
-      <meshStandardMaterial color="#8b5cf6" />
-    </Sphere>
-  )
-}
+import { OrbitControls, Environment, Float } from "@react-three/drei"
+import OmiModel from "./omi-model"
 
 export default function HeroSection() {
   const productsRef = useRef(null)
@@ -58,7 +50,9 @@ export default function HeroSection() {
             <pointLight position={[-10, -10, -10]} />
 
             <Float speed={1.5} rotationIntensity={0.5} floatIntensity={2}>
-              <SimpleModel />
+              <Suspense fallback={null}>
+                <OmiModel />
+              </Suspense>
             </Float>
 
             <Environment preset="city" />

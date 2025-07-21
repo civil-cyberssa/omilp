@@ -12,8 +12,11 @@ jest.mock("@react-three/drei", () => ({
   OrbitControls: () => <div data-testid="orbit-controls-mock" />,
   Environment: () => <div data-testid="environment-mock" />,
   Float: ({ children }) => <div data-testid="float-mock">{children}</div>,
-  Sphere: () => <div data-testid="sphere-mock" />,
 }))
+
+jest.mock("../components/omi-model", () => () => (
+  <div data-testid="omi-model-mock" />
+))
 
 describe("HeroSection", () => {
   it("renderiza sem erros", () => {
@@ -30,6 +33,7 @@ describe("HeroSection", () => {
 
     // Verifica se os componentes 3D foram renderizados
     expect(screen.getByTestId("float-mock")).toBeInTheDocument()
+    expect(screen.getByTestId("omi-model-mock")).toBeInTheDocument()
     expect(screen.getByTestId("orbit-controls-mock")).toBeInTheDocument()
     expect(screen.getByTestId("environment-mock")).toBeInTheDocument()
   })
