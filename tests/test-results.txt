@@ -1,0 +1,10 @@
+PASS  tests/hero-section.test.tsx
+  HeroSection
+    ✓ renderiza sem erros (132 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       1 passed, 1 total
+Snapshots:   0 total
+Time:        2.5 s
+Ran all test suites.
+
