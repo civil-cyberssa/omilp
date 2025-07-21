@@ -31,7 +31,7 @@ export default function HeroSection() {
             </span>
           </h1>
           <p className="mt-6 text-lg md:text-xl text-white/70 max-w-lg mx-auto lg:mx-0">
-            Criamos soluções de software inovadoras que transformam como empresas se conectam com seus clientes.
+            A sua experiência digital começa aqui, com processos fluidos e inovadores.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
             <button
