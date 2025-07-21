@@ -59,7 +59,7 @@ export default function ClientsSection() {
             >
               <Image
                 src={client.logo || "/placeholder.svg"}
-                alt={client.name}
+                alt={`Logo do cliente ${client.name} atendido pela Omi em Salvador`}
                 width={200}
                 height={80}
                 className="max-h-12 w-auto opacity-70 hover:opacity-100 transition-opacity"
