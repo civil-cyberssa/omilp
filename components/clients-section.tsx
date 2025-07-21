@@ -15,19 +15,19 @@ export default function ClientsSection() {
   const testimonials = [
     {
       id: 1,
-      quote: "Omi transformed our digital infrastructure and helped us achieve unprecedented growth.",
+      quote: "A Omi transformou nossa infraestrutura digital e nos ajudou a atingir um crescimento sem precedentes.",
       author: "Sarah Johnson",
       position: "CTO, TechCorp",
     },
     {
       id: 2,
-      quote: "The innovative solutions provided by Omi have revolutionized how we interact with our customers.",
+      quote: "As soluções inovadoras da Omi revolucionaram a forma como interagimos com nossos clientes.",
       author: "Michael Chen",
       position: "CEO, InnovateLabs",
     },
     {
       id: 3,
-      quote: "Working with Omi has been a game-changer for our business operations and customer engagement.",
+      quote: "Trabalhar com a Omi mudou nosso modelo de negócio e o relacionamento com os clientes.",
       author: "Elena Rodriguez",
       position: "COO, FutureSystems",
     },
@@ -40,13 +40,13 @@ export default function ClientsSection() {
       <div className="container mx-auto px-6 relative z-10">
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Trusted by{" "}
+            Confiado por{" "}
             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Industry Leaders
+              Líderes de Mercado
             </span>
           </h2>
           <p className="text-lg text-white/70 max-w-2xl mx-auto">
-            Partnering with forward-thinking companies to drive digital transformation
+            Parceria com empresas inovadoras para impulsionar a transformação digital
           </p>
         </div>
 

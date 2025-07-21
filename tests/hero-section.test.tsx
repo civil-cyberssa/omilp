@@ -20,10 +20,10 @@ describe("HeroSection", () => {
     render(<HeroSection />)
 
     // Verifica se os elementos principais estão presentes
-    expect(screen.getByText("Redefining")).toBeInTheDocument()
-    expect(screen.getByText("Digital Experiences")).toBeInTheDocument()
-    expect(screen.getByText("Explore Products")).toBeInTheDocument()
-    expect(screen.getByText("Watch Demo")).toBeInTheDocument()
+    expect(screen.getByText("Redefinindo")).toBeInTheDocument()
+    expect(screen.getByText("Experiências Digitais")).toBeInTheDocument()
+    expect(screen.getByText("Conheça os Produtos")).toBeInTheDocument()
+    expect(screen.getByText("Assista à Demo")).toBeInTheDocument()
 
     // Verifica se o Canvas foi renderizado
     expect(screen.getByTestId("canvas-mock")).toBeInTheDocument()
