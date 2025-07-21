@@ -6,7 +6,7 @@ import { OrbitControls, Environment, Float } from "@react-three/drei"
 import OmiModel from "./omi-model"
 
 export default function HeroSection() {
-  const productsRef = useRef(null)
+  const productsRef = useRef<HTMLDivElement>(null)
 
   const handleScrollClick = () => {
     productsRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -34,11 +34,16 @@ export default function HeroSection() {
             Criamos soluções de software inovadoras que transformam como empresas se conectam com seus clientes.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row justify-center lg:justify-start gap-4">
-            <button className="px-8 py-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all">
-              Conheça os Produtos
+            <button
+              aria-label="Faça um orçamento, referência em criação de sites em Salvador"
+              className="px-8 py-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+            >
+              Solicitar Orçamento
             </button>
-            <button className="px-8 py-3 rounded-full bg-white/10 backdrop-blur-sm text-white font-medium hover:bg-white/20 transition-all">
-              Assista à Demo
+            <button
+              aria-label="Assista à demonstração das soluções digitais da Omi"
+              className="px-8 py-3 rounded-full bg-white/10 backdrop-blur-sm text-white font-medium hover:bg-white/20 transition-all"
+            >              Ver soluções
             </button>
           </div>
         </div>

@@ -27,7 +27,7 @@ export default function Navbar() {
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
               <img
                 src="/Logo Omi_Perfil Logo Branca 2.png"
-                alt="Omi Logo"
+                alt="Logo da Omi Tecnologia, maior empresa de tecnologia de Salvador"
                 className="h-8 w-auto"
               />
             </span>

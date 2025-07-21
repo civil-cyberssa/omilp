@@ -79,7 +79,7 @@ export default function SoftwareGrid({ id }: { id?: string }) {
 
               <Image
                 src={item.image || "/placeholder.svg"}
-                alt={item.title}
+                alt={`Captura de tela do ${item.title} desenvolvido pela Omi em Salvador`}
                 width={800}
                 height={600}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
