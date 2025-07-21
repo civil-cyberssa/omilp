@@ -175,7 +175,7 @@ export default function ContactForm() {
                   </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
+                {/* <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -191,12 +191,12 @@ export default function ContactForm() {
                         d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0L6.343 16.657A8 8 0 1120 10a8 8 0 01-2.343 6.657z"
                       />
                     </svg>
-                  </div>
-                  <div>
+                  </div> */}
+                  {/* <div>
                     <h4 className="text-lg font-medium text-white">Localização</h4>
                     <p className="text-white/70">Salvador, BA</p>
-                  </div>
-                </div>
+                  </div> */}
+                {/* </div> */}
               </div>
 
               <div className="mt-10">

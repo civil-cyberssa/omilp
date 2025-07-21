@@ -25,7 +25,11 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 bg-clip-text text-transparent">
-              Omi
+              <img
+                src="/Logo Omi_Perfil Logo Branca 2.png"
+                alt="Omi Logo"
+                className="h-8 w-auto"
+              />
             </span>
           </Link>
 
