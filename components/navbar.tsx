@@ -31,16 +31,16 @@ export default function Navbar() {
 
           <nav className="hidden md:flex space-x-8">
             <Link href="#products" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
-              Products
+              Produtos
             </Link>
             <Link href="#solutions" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
-              Solutions
+              Soluções
             </Link>
             <Link href="#clients" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
-              Clients
+              Clientes
             </Link>
             <Link href="#contact" className="text-sm font-medium text-white/80 hover:text-white transition-colors">
-              Contact
+              Contato
             </Link>
           </nav>
 
@@ -49,7 +49,7 @@ export default function Navbar() {
               href="#contact"
               className="hidden md:inline-flex px-5 py-2 text-sm font-medium rounded-full bg-gradient-to-r from-blue-500 to-purple-600 hover:opacity-90 transition-opacity"
             >
-              Get Started
+              Solicitar Orçamento
             </Link>
             <button className="md:hidden text-white">
               <svg

@@ -124,19 +124,17 @@ export default function ImmersiveSection() {
         <div className="lg:w-1/2 text-center lg:text-left mb-12 lg:mb-0">
           <h2 className="text-4xl md:text-6xl font-bold mb-6">
             <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-              Touch the Future
+              Toque o Futuro
             </span>
           </h2>
           <p className="text-lg md:text-xl text-white/80 mb-8 max-w-lg mx-auto lg:mx-0">
-            Our technology creates seamless interactions between users and digital interfaces. Experience the power of
-            intuitive design that responds to your every gesture.
+            Nossa tecnologia cria interações perfeitas entre usuários e interfaces digitais. Experimente o poder de um design intuitivo que responde a cada gesto seu.
           </p>
           <p className="text-lg md:text-xl text-white/80 mb-8 max-w-lg mx-auto lg:mx-0">
-            Interact with our 3D model to see how we're redefining mobile experiences. Rotate, zoom, and explore our
-            next-generation interface design.
+            Interaja com nosso modelo 3D para ver como estamos redefinindo as experiências móveis. Gire, aproxime e explore nosso design de próxima geração.
           </p>
           <button className="px-8 py-3 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all">
-            Discover the Technology
+            Conheça a Tecnologia
           </button>
         </div>
 

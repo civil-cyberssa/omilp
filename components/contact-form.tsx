@@ -10,17 +10,20 @@ export default function ContactForm() {
     message: "",
   })
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    // Handle form submission logic here
-    console.log(formData)
-    alert("Thank you for your message! We'll get back to you soon.")
-    setFormData({ name: "", email: "", company: "", message: "" })
+    try {
+      console.log(formData)
+      alert("Obrigado pela sua mensagem! Em breve entraremos em contato.")
+      setFormData({ name: "", email: "", company: "", message: "" })
+    } catch (error) {
+      console.error("Erro ao enviar formulário", error)
+    }
   }
 
   return (
@@ -35,14 +38,14 @@ export default function ContactForm() {
       <div className="container mx-auto px-6 relative z-10">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold mb-6">
-              <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                Let's Build Something Amazing
-              </span>
-            </h2>
-            <p className="text-lg text-white/70 max-w-2xl mx-auto">
-              Ready to transform your digital experience? Get in touch with our team.
-            </p>
+          <h2 className="text-3xl md:text-5xl font-bold mb-6">
+            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              Vamos Construir Algo Incrível
+            </span>
+          </h2>
+          <p className="text-lg text-white/70 max-w-2xl mx-auto">
+            Pronto para transformar sua experiência digital? Solicite um orçamento com nosso time.
+          </p>
           </div>
 
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -50,7 +53,7 @@ export default function ContactForm() {
               <form onSubmit={handleSubmit}>
                 <div className="mb-6">
                   <label htmlFor="name" className="block text-white/80 mb-2 text-sm font-medium">
-                    Name
+                    Nome
                   </label>
                   <input
                     type="text"
@@ -60,13 +63,13 @@ export default function ContactForm() {
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-                    placeholder="Your name"
+                    placeholder="Seu nome"
                   />
                 </div>
 
                 <div className="mb-6">
                   <label htmlFor="email" className="block text-white/80 mb-2 text-sm font-medium">
-                    Email
+                    E-mail
                   </label>
                   <input
                     type="email"
@@ -76,13 +79,13 @@ export default function ContactForm() {
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-                    placeholder="your.email@example.com"
+                    placeholder="seu.email@exemplo.com"
                   />
                 </div>
 
                 <div className="mb-6">
                   <label htmlFor="company" className="block text-white/80 mb-2 text-sm font-medium">
-                    Company
+                    Empresa
                   </label>
                   <input
                     type="text"
@@ -91,13 +94,13 @@ export default function ContactForm() {
                     value={formData.company}
                     onChange={handleChange}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
-                    placeholder="Your company"
+                    placeholder="Sua empresa"
                   />
                 </div>
 
                 <div className="mb-6">
                   <label htmlFor="message" className="block text-white/80 mb-2 text-sm font-medium">
-                    Message
+                    Mensagem
                   </label>
                   <textarea
                     id="message"
@@ -107,7 +110,7 @@ export default function ContactForm() {
                     required
                     rows={4}
                     className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white resize-none"
-                    placeholder="Tell us about your project..."
+                    placeholder="Conte-nos sobre seu projeto..."
                   ></textarea>
                 </div>
 
@@ -115,15 +118,15 @@ export default function ContactForm() {
                   type="submit"
                   className="w-full py-3 px-6 rounded-lg bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all"
                 >
-                  Send Message
+                    Enviar Mensagem
                 </button>
               </form>
             </div>
 
             <div className="text-center md:text-left">
-              <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-                Connect With Us
-              </h3>
+            <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+              Conecte-se Conosco
+            </h3>
 
               <div className="space-y-6">
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
@@ -145,7 +148,7 @@ export default function ContactForm() {
                   </div>
                   <div>
                     <h4 className="text-lg font-medium text-white">Email</h4>
-                    <p className="text-white/70">contact@omitech.com</p>
+                    <p className="text-white/70">contato@omi.com.br</p>
                   </div>
                 </div>
 
@@ -168,7 +171,7 @@ export default function ContactForm() {
                   </div>
                   <div>
                     <h4 className="text-lg font-medium text-white">Phone</h4>
-                    <p className="text-white/70">+1 (555) 123-4567</p>
+                    <p className="text-white/70">71 9 8718-0570</p>
                   </div>
                 </div>
 
@@ -190,14 +193,14 @@ export default function ContactForm() {
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-lg font-medium text-white">Location</h4>
-                    <p className="text-white/70">123 Innovation Drive, San Francisco, CA</p>
+                    <h4 className="text-lg font-medium text-white">Localização</h4>
+                    <p className="text-white/70">Salvador, BA</p>
                   </div>
                 </div>
               </div>
 
               <div className="mt-10">
-                <h4 className="text-lg font-medium text-white mb-4">Follow Us</h4>
+                <h4 className="text-lg font-medium text-white mb-4">Siga-nos</h4>
                 <div className="flex justify-center md:justify-start space-x-6">
                   <a
                     href="#"
@@ -213,7 +216,7 @@ export default function ContactForm() {
                     </svg>
                   </a>
                   <a
-                    href="#"
+                    href="https://instagram.com/omi.tecnologia"
                     className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
                   >
                     <svg

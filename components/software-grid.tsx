@@ -54,12 +54,12 @@ export default function SoftwareGrid({ id }: { id?: string }) {
         <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-bold mb-6">
             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Cutting-edge
+              Soluções de Software
             </span>{" "}
-            Software Solutions
+            Inovadoras
           </h2>
           <p className="text-lg text-white/70 max-w-2xl mx-auto">
-            Our suite of innovative products designed to transform your digital landscape
+            Nossa suíte de produtos inovadores projetados para transformar o seu ambiente digital
           </p>
         </div>
 
