@@ -1,6 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+
+type HumanChallenge = {
+  left: number
+  right: number
+}
+
+function createHumanChallenge(): HumanChallenge {
+  return {
+    left: Math.floor(Math.random() * 8) + 2,
+    right: Math.floor(Math.random() * 8) + 2,
+  }
+}
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -8,21 +20,70 @@ export default function ContactForm() {
     email: "",
     company: "",
     message: "",
+    humanAnswer: "",
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle")
+  const [submitError, setSubmitError] = useState("")
+  const [humanChallenge, setHumanChallenge] = useState<HumanChallenge | null>(null)
+
+  useEffect(() => {
+    setHumanChallenge(createHumanChallenge())
+  }, [])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    setIsSubmitting(true)
+    setSubmitStatus("idle")
+    setSubmitError("")
+
     try {
-      console.log(formData)
-      alert("Obrigado pela sua mensagem! Em breve entraremos em contato.")
-      setFormData({ name: "", email: "", company: "", message: "" })
+      if (!humanChallenge) {
+        throw new Error("Aguarde a verificacao humana carregar.")
+      }
+
+      const expectedAnswer = humanChallenge.left + humanChallenge.right
+
+      if (Number(formData.humanAnswer.trim()) !== expectedAnswer) {
+        throw new Error("Responda corretamente a verificacao humana.")
+      }
+
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...formData,
+          humanLeft: humanChallenge.left,
+          humanRight: humanChallenge.right,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Nao foi possivel enviar a mensagem.")
+      }
+
+      setSubmitStatus("success")
+      setFormData({ name: "", email: "", company: "", message: "", humanAnswer: "" })
+      setHumanChallenge(createHumanChallenge())
     } catch (error) {
       console.error("Erro ao enviar formulário", error)
+      setSubmitStatus("error")
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel enviar a mensagem agora."
+      )
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -40,11 +101,11 @@ export default function ContactForm() {
           <div className="text-center mb-16">
           <h2 className="text-3xl md:text-5xl font-bold mb-6">
             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Vamos Construir Algo Incrível
+              Vamos desenhar seu ideia
             </span>
           </h2>
           <p className="text-lg text-white/70 max-w-2xl mx-auto">
-            Pronto para transformar sua experiência digital? Solicite um orçamento com nosso time.
+            Conte o que você precisa. Nosso time retorna com o próximo passo.
           </p>
           </div>
 
@@ -114,44 +175,52 @@ export default function ContactForm() {
                   ></textarea>
                 </div>
 
+                <div className="mb-6">
+                  <label htmlFor="humanAnswer" className="block text-white/80 mb-2 text-sm font-medium">
+                    <span className="font-bold text-white">Verificacao humana:</span> quanto é{" "}
+                    {humanChallenge ? `${humanChallenge.left} + ${humanChallenge.right}` : "..."}?
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    id="humanAnswer"
+                    name="humanAnswer"
+                    value={formData.humanAnswer}
+                    onChange={handleChange}
+                    required
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white"
+                    placeholder="Resposta"
+                  />
+                </div>
+
                 <button
                   type="submit"
-                  className="w-full py-3 px-6 rounded-lg bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                  disabled={isSubmitting || !humanChallenge}
+                  className="w-full py-3 px-6 rounded-lg bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Enviar Mensagem
+                    {isSubmitting ? "Enviando..." : "Enviar Mensagem"}
                 </button>
+
+                {submitStatus === "success" && (
+                  <p className="mt-4 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+                    Mensagem recebida com sucesso! Em breve entraremos em contato.
+                  </p>
+                )}
+
+                {submitStatus === "error" && (
+                  <p className="mt-4 rounded-lg border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-100">
+                    {submitError}
+                  </p>
+                )}
               </form>
             </div>
 
             <div className="text-center md:text-left">
             <h3 className="text-2xl font-bold mb-6 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Conecte-se Conosco
+              Fale com a Omi
             </h3>
 
               <div className="space-y-6">
-                <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6 text-purple-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="text-lg font-medium text-white">Email</h4>
-                    <p className="text-white/70">contato@omi.com.br</p>
-                  </div>
-                </div>
-
                 <div className="flex flex-col md:flex-row items-center md:items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
                     <svg
@@ -170,8 +239,8 @@ export default function ContactForm() {
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-lg font-medium text-white">Phone</h4>
-                    <p className="text-white/70">71 9 8718-0570</p>
+                    <h4 className="text-lg font-medium text-white">WhatsApp</h4>
+                    <p className="text-white/70">71 9 9299-7191</p>
                   </div>
                 </div>
 
@@ -203,20 +272,9 @@ export default function ContactForm() {
                 <h4 className="text-lg font-medium text-white mb-4">Siga-nos</h4>
                 <div className="flex justify-center md:justify-start space-x-6">
                   <a
-                    href="#"
-                    className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z" />
-                    </svg>
-                  </a>
-                  <a
                     href="https://instagram.com/omi.tecnologia"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
                   >
                     <svg
@@ -229,7 +287,9 @@ export default function ContactForm() {
                     </svg>
                   </a>
                   <a
-                    href="#"
+                    href="https://www.linkedin.com/company/omitechnology/?viewAsMember=true"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
                   >
                     <svg
@@ -250,4 +310,3 @@ export default function ContactForm() {
     </section>
   )
 }
-

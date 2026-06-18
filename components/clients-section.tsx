@@ -1,93 +1,89 @@
 import Image from "next/image"
 
-export default function ClientsSection() {
-  const clients = [
-    { id: 1, name: "TechCorp", logo: "/placeholder.svg?height=80&width=200" },
-    { id: 2, name: "InnovateLabs", logo: "/placeholder.svg?height=80&width=200" },
-    { id: 3, name: "FutureSystems", logo: "/placeholder.svg?height=80&width=200" },
-    { id: 4, name: "GlobalTech", logo: "/placeholder.svg?height=80&width=200" },
-    { id: 5, name: "NextGen", logo: "/placeholder.svg?height=80&width=200" },
-    { id: 6, name: "DigitalEdge", logo: "/placeholder.svg?height=80&width=200" },
-    { id: 7, name: "SmartSolutions", logo: "/placeholder.svg?height=80&width=200" },
-    { id: 8, name: "CloudNine", logo: "/placeholder.svg?height=80&width=200" },
-  ]
+const clients = [
+  {
+    name: "Lei da Grana",
+    logo: "/lei_da_grana_logo.png",
+    width: 500,
+    height: 500,
+  },
+  {
+    name: "Veli",
+    logo: "/Veli_logo azul clara.png",
+    width: 1080,
+    height: 671,
+  },
+  {
+    name: "Instituto Joga Junto",
+    logo: "/logo_ijj_branco.png",
+    width: 1920,
+    height: 906,
+  },
+  {
+    name: "Brownie Baiano",
+    logo: "/logo_browniebaiano_branca_nobg.png",
+    width: 1024,
+    height: 1024,
+  },
+  {
+    name: "Civil",
+    logo: "/Logo_CIVIL.png",
+    width: 1133,
+    height: 455,
+  },
+  {
+    name: "Urus",
+    logo: "/urus_logo_nobg_branca.png",
+    width: 500,
+    height: 500,
+  },
+]
 
-  const testimonials = [
-    {
-      id: 1,
-      quote: "A Omi transformou nossa infraestrutura digital e nos ajudou a atingir um crescimento sem precedentes.",
-      author: "Sarah Johnson",
-      position: "CTO, TechCorp",
-    },
-    {
-      id: 2,
-      quote: "As soluções inovadoras da Omi revolucionaram a forma como interagimos com nossos clientes.",
-      author: "Michael Chen",
-      position: "CEO, InnovateLabs",
-    },
-    {
-      id: 3,
-      quote: "Trabalhar com a Omi mudou nosso modelo de negócio e o relacionamento com os clientes.",
-      author: "Elena Rodriguez",
-      position: "COO, FutureSystems",
-    },
-  ]
+export default function ClientsSection() {
+  const logoRail = [...clients, ...clients]
 
   return (
-    <section id="clients" className="py-20 md:py-32 bg-black relative">
-      <div className="absolute inset-0 bg-gradient-to-b from-black via-purple-900/10 to-black"></div>
+    <section id="clients" className="relative overflow-hidden bg-black py-20 md:py-28">
+      <div className="absolute inset-0 bg-gradient-to-b from-black via-blue-950/10 to-black" />
+      <div className="absolute left-1/2 top-1/2 h-64 w-[72rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/[0.03] blur-3xl" />
 
-      <div className="container mx-auto px-6 relative z-10">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-bold mb-6">
-            Confiado por{" "}
-            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Líderes de Mercado
-            </span>
+      <div className="container relative z-10 mx-auto px-6">
+        <div className="mb-12 max-w-2xl">
+          <h2 className="text-3xl font-bold tracking-tight text-white md:text-5xl">
+            Tecnologia entregue para negócios reais.
           </h2>
-          <p className="text-lg text-white/70 max-w-2xl mx-auto">
-            Parceria com empresas inovadoras para impulsionar a transformação digital
+          <p className="mt-4 text-base text-white/60 md:text-lg">
+            Sistemas, sites e produtos digitais criados com foco em operação, venda e crescimento.
           </p>
         </div>
 
-        {/* Clients logos */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-20">
-          {clients.map((client) => (
-            <div
-              key={client.id}
-              className="flex items-center justify-center p-6 bg-white/5 backdrop-blur-sm rounded-xl hover:bg-white/10 transition-colors"
-            >
-              <Image
-                src={client.logo || "/placeholder.svg"}
-                alt={`Logo do cliente ${client.name} atendido pela Omi em Salvador`}
-                width={200}
-                height={80}
-                className="max-h-12 w-auto opacity-70 hover:opacity-100 transition-opacity"
-              />
-            </div>
-          ))}
-        </div>
+        <div
+          className="logo-marquee group relative overflow-hidden border-y border-white/10 py-6"
+          aria-label="Clientes atendidos pela Omi Tecnologia"
+        >
+          <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-24 bg-gradient-to-r from-black to-transparent" />
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-24 bg-gradient-to-l from-black to-transparent" />
 
-        {/* Testimonials */}
-        <div className="grid md:grid-cols-3 gap-8">
-          {testimonials.map((testimonial) => (
-            <div
-              key={testimonial.id}
-              className="p-8 rounded-2xl bg-gradient-to-br from-white/5 to-white/10 backdrop-blur-sm border border-white/10"
-            >
-              <svg className="w-10 h-10 text-purple-500 mb-6" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
-              </svg>
-              <p className="text-lg text-white/90 mb-6">{testimonial.quote}</p>
-              <div>
-                <p className="font-medium text-white">{testimonial.author}</p>
-                <p className="text-sm text-white/60">{testimonial.position}</p>
+          <div className="logo-marquee-track flex w-max items-center gap-6">
+            {logoRail.map((client, index) => (
+              <div
+                key={`${client.name}-${index}`}
+                className="logo-marquee-item flex h-24 w-56 shrink-0 items-center justify-center px-6"
+              >
+                <div className="flex h-16 w-32 items-center justify-center">
+                  <Image
+                    src={client.logo}
+                    alt={`Logo ${client.name}, cliente da Omi Tecnologia`}
+                    width={client.width}
+                    height={client.height}
+                    className="h-full w-full object-contain opacity-55 grayscale transition duration-300 ease-out hover:scale-105 hover:opacity-100 hover:grayscale-0"
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </section>
   )
 }
-
