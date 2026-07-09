@@ -216,7 +216,7 @@ export default function ContactForm() {
                     </svg>
                   </a>
                   <a
-                    href="https://instagram.com/omi.tecnologia"
+                    href="https://instagram.com/omi_tecnologia"
                     className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
                   >
                     <svg
