@@ -1,11 +1,12 @@
+import * as React from "react"
 import { render, screen } from "@testing-library/react"
+import { describe, expect, it } from "vitest"
 import WhatsappButton from "../components/whatsapp-button"
-import "@testing-library/jest-dom"
 
 describe("WhatsappButton", () => {
   it("renderiza o link do WhatsApp", () => {
     render(<WhatsappButton />)
     const link = screen.getByRole("link", { name: /WhatsApp/i })
-    expect(link).toHaveAttribute("href", "https://wa.me/5571987180570")
+    expect(link).toHaveAttribute("href", "https://wa.me/5571992997191")
   })
 })
