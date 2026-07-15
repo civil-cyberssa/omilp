@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import WhatsappButton from '@/components/whatsapp-button'
 
@@ -256,6 +257,18 @@ export default function RootLayout({
   return (
     <html lang="pt">
       <body>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-RKLNFK03PK"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-RKLNFK03PK');
+          `}
+        </Script>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
