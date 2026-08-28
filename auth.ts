@@ -14,10 +14,12 @@ import {
   getAuthSecret,
 } from "@/lib/auth-config"
 
-const canonicalAuthUrl = process.env.AUTH_URL ?? process.env.NEXT_PUBLIC_SITE_URL
+const isVercel = process.env.VERCEL === "1"
+const canonicalAuthUrl =
+  process.env.AUTH_URL || (!isVercel ? process.env.NEXT_PUBLIC_SITE_URL : undefined)
 if (canonicalAuthUrl) {
   process.env.AUTH_URL = new URL(canonicalAuthUrl).origin
-} else if (process.env.NODE_ENV === "production") {
+} else if (process.env.NODE_ENV === "production" && !isVercel) {
   throw new Error("AUTH_URL é obrigatória em produção")
 }
 
@@ -28,6 +30,7 @@ const credentialsSchema = z.object({
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: getAuthSecret(),
+  trustHost: isVercel || process.env.AUTH_TRUST_HOST === "true",
   pages: { signIn: "/dashboard/login" },
   session: { strategy: "jwt", maxAge: AUTH_SESSION_MAX_AGE },
   cookies: {

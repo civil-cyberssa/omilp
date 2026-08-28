@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(backendEndpoint("/api/v1/checkout/status/"), {
       headers: {
-        "X-Checkout-Internal-Key": process.env.PORTAL_INTERNAL_KEY ?? "",
+        "X-Checkout-Internal-Key": process.env.CHECKOUT_INTERNAL_KEY ?? "",
         "X-Purchase-Token": purchaseToken,
       },
       cache: "no-store",

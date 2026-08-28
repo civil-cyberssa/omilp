@@ -10,7 +10,10 @@ export async function POST(request: NextRequest) {
     const { email } = await request.json()
     const backend = await fetch(backendEndpoint("/api/v1/portal/access/request/"), {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Portal-Internal-Key": process.env.PORTAL_INTERNAL_KEY ?? "" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Portal-Internal-Key": process.env.PORTAL_ACCESS_KEY ?? "",
+      },
       body: JSON.stringify({ email }), cache: "no-store",
     })
     const parsed = await readUpstreamJson<{ found: boolean; name: string; email: string; token: string }>(backend)

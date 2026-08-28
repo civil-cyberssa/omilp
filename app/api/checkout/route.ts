@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const headers = new Headers({ "Content-Type": "application/json" })
     if (clientIp) {
       headers.set("X-Checkout-Client-IP", clientIp)
-      headers.set("X-Checkout-Internal-Key", process.env.PORTAL_INTERNAL_KEY ?? "")
+      headers.set("X-Checkout-Internal-Key", process.env.CHECKOUT_CLIENT_IP_KEY ?? "")
     }
     const backend = await fetch(backendEndpoint("/api/v1/checkout/"), {
       method: "POST",
