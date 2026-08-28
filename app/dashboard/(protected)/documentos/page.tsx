@@ -4,6 +4,7 @@ import { FormEvent, useDeferredValue, useRef, useState } from "react"
 import useSWR from "swr"
 import {
   CalendarDays,
+  CheckCircle2,
   Download,
   FileArchive,
   FileText,
@@ -31,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
+  AuthUser,
   DashboardDocument,
   DocumentType,
   PagedResponse,
@@ -39,6 +41,7 @@ import {
   formatDashboardDate,
   formatFileSize,
 } from "@/lib/dashboard-api"
+import { runWithConcurrency } from "@/lib/async-pool"
 
 const documentTypes: Array<{ value: DocumentType; label: string }> = [
   { value: "INVOICE", label: "Nota fiscal" },
@@ -48,6 +51,12 @@ const documentTypes: Array<{ value: DocumentType; label: string }> = [
   { value: "OTHER", label: "Outros" },
 ]
 const maxFileSize = 25 * 1024 * 1024
+const uploadConcurrency = 3
+type UploadStatus = { state: "uploading" | "success" | "error"; message?: string }
+
+function fileKey(file: File) {
+  return `${file.name}:${file.size}:${file.lastModified}`
+}
 
 export default function DocumentsPage() {
   const [search, setSearch] = useState("")
@@ -58,9 +67,11 @@ export default function DocumentsPage() {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState("")
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [uploadStatuses, setUploadStatuses] = useState<Record<string, UploadStatus>>({})
   const [documentType, setDocumentType] = useState<DocumentType>("DOCUMENT")
   const formRef = useRef<HTMLFormElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const deferredSearch = useDeferredValue(search)
 
   const query = new URLSearchParams({ page: String(page), page_size: "20" })
@@ -90,42 +101,101 @@ export default function DocumentsPage() {
 
   function resetUpload() {
     formRef.current?.reset()
-    setSelectedFile(null)
+    setSelectedFiles([])
+    setUploadStatuses({})
     setDocumentType("DOCUMENT")
     setUploadError("")
   }
 
+  function addFiles(files: FileList | File[]) {
+    const incoming = Array.from(files)
+    const oversized = incoming.filter((file) => file.size > maxFileSize)
+    const accepted = incoming.filter((file) => file.size <= maxFileSize)
+
+    setSelectedFiles((current) => {
+      const known = new Set(current.map(fileKey))
+      return [...current, ...accepted.filter((file) => !known.has(fileKey(file)))]
+    })
+    setUploadError(
+      oversized.length
+        ? `${oversized.length} ${oversized.length === 1 ? "arquivo excede" : "arquivos excedem"} o limite de 25 MB.`
+        : "",
+    )
+  }
+
+  function removeSelectedFile(file: File) {
+    const key = fileKey(file)
+    setSelectedFiles((current) => current.filter((item) => fileKey(item) !== key))
+    setUploadStatuses((current) => {
+      const next = { ...current }
+      delete next[key]
+      return next
+    })
+  }
+
+  function setFileStatus(file: File, status: UploadStatus) {
+    setUploadStatuses((current) => ({ ...current, [fileKey(file)]: status }))
+  }
+
   async function upload(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!selectedFile) {
-      setUploadError("Selecione um arquivo para continuar.")
-      return
-    }
-    if (selectedFile.size > maxFileSize) {
-      setUploadError("O arquivo deve ter no máximo 25 MB.")
+    if (!selectedFiles.length) {
+      setUploadError("Selecione pelo menos um arquivo para continuar.")
       return
     }
     setUploading(true)
     setUploadError("")
-    const formData = new FormData(event.currentTarget)
-    formData.set("document_type", documentType)
-    formData.set("file", selectedFile)
+    const files = [...selectedFiles]
+    const customName = String(new FormData(event.currentTarget).get("name") ?? "").trim()
+
     try {
-      await dashboardMutation<DashboardDocument>("/api/backoffice/documents", {
-        method: "POST",
-        body: formData,
-      })
+      await dashboardFetcher<AuthUser>("/api/backoffice/me")
+    } catch (sessionFailure) {
+      setUploadError(
+        sessionFailure instanceof Error
+          ? sessionFailure.message
+          : "Não foi possível validar sua sessão antes do envio.",
+      )
+      setUploading(false)
+      return
+    }
+
+    const results = await runWithConcurrency(files, uploadConcurrency, async (file) => {
+      setFileStatus(file, { state: "uploading" })
+      const formData = new FormData()
+      formData.set("document_type", documentType)
+      formData.set("file", file)
+      if (files.length === 1 && customName) formData.set("name", customName)
+
+      try {
+        const saved = await dashboardMutation<DashboardDocument>("/api/backoffice/documents", {
+          method: "POST",
+          body: formData,
+        })
+        setFileStatus(file, { state: "success" })
+        return saved
+      } catch (failure) {
+        const message = failure instanceof Error ? failure.message : "Falha no envio."
+        setFileStatus(file, { state: "error", message })
+        throw failure
+      }
+    })
+
+    const failedFiles = files.filter((_, index) => results[index].status === "rejected")
+    const successCount = files.length - failedFiles.length
+    setPage(1)
+    await mutate().catch(() => undefined)
+
+    if (!failedFiles.length) {
       setUploadOpen(false)
       resetUpload()
-      setPage(1)
-      await mutate()
-    } catch (uploadFailure) {
+    } else {
+      setSelectedFiles(failedFiles)
       setUploadError(
-        uploadFailure instanceof Error ? uploadFailure.message : "Não foi possível enviar o documento.",
+        `${successCount} ${successCount === 1 ? "documento foi enviado" : "documentos foram enviados"}; ${failedFiles.length} ${failedFiles.length === 1 ? "falhou" : "falharam"}. Revise os itens e tente novamente.`,
       )
-    } finally {
-      setUploading(false)
     }
+    setUploading(false)
   }
 
   async function remove(document: DashboardDocument) {
@@ -217,27 +287,35 @@ export default function DocumentsPage() {
         ) : null}
       </div>
 
-      <Dialog open={uploadOpen} onOpenChange={(open) => { setUploadOpen(open); if (!open && !uploading) resetUpload() }}>
+      <Dialog open={uploadOpen} onOpenChange={(open) => { if (uploading) return; setUploadOpen(open); if (!open) resetUpload() }}>
         <DialogContent className="omi-dashboard border-black/10 bg-white text-[#020617] sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>Novo documento</DialogTitle>
-            <DialogDescription>Envie um arquivo e classifique-o para facilitar a busca.</DialogDescription>
+            <DialogTitle>Novos documentos</DialogTitle>
+            <DialogDescription>Envie vários arquivos de uma vez. Até três serão processados simultaneamente.</DialogDescription>
           </DialogHeader>
           <form ref={formRef} onSubmit={upload} className="space-y-5">
-            <div className="space-y-2"><Label htmlFor="document-name">Nome <span className="font-normal text-muted-foreground">(opcional)</span></Label><Input id="document-name" name="name" placeholder="Preenchido com o nome do arquivo se ficar vazio" /></div>
-            <div className="space-y-2"><Label>Tipo</Label><Select value={documentType} onValueChange={(value) => setDocumentType(value as DocumentType)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent className="omi-dashboard bg-white text-[#020617]">{documentTypes.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label htmlFor="document-name">Nome <span className="font-normal text-muted-foreground">(opcional)</span></Label><Input id="document-name" name="name" disabled={selectedFiles.length !== 1 || uploading} placeholder={selectedFiles.length > 1 ? "Em lotes, cada documento usa o nome do arquivo" : "Preenchido com o nome do arquivo se ficar vazio"} /><p className="text-xs text-muted-foreground">O nome personalizado fica disponível quando há apenas um arquivo.</p></div>
+            <div className="space-y-2"><Label>Tipo</Label><Select value={documentType} onValueChange={(value) => setDocumentType(value as DocumentType)} disabled={uploading}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent className="omi-dashboard bg-white text-[#020617]">{documentTypes.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2">
-              <Label htmlFor="document-file">Arquivo</Label>
-              <label htmlFor="document-file" onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); setSelectedFile(event.dataTransfer.files?.[0] ?? null) }} className="flex cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-[#4338FF]/30 bg-[#4338FF]/[.035] px-6 py-9 text-center transition hover:border-[#4338FF]/55 hover:bg-[#4338FF]/[.06]">
+              <Label htmlFor="document-file">Arquivos</Label>
+              <div onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); if (!uploading) addFiles(event.dataTransfer.files) }} className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[#4338FF]/30 bg-[#4338FF]/[.035] px-6 py-8 text-center transition hover:border-[#4338FF]/55 hover:bg-[#4338FF]/[.06]">
                 <UploadCloud className="h-8 w-8 text-[#4338FF]" />
-                <span className="mt-3 max-w-full truncate text-sm font-medium">{selectedFile?.name ?? "Selecione ou arraste um arquivo"}</span>
+                <span className="mt-3 text-sm font-medium">Arraste seus arquivos para cá</span>
                 <span className="mt-1 text-xs text-muted-foreground">PDF, Word, Excel, imagens, CSV ou texto · até 25 MB</span>
-              </label>
-              <Input id="document-file" name="file" type="file" required className="sr-only" accept=".pdf,.doc,.docx,.xls,.xlsx,.ods,.odt,.csv,.txt,.png,.jpg,.jpeg" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} />
-              {selectedFile ? <p className="text-xs text-muted-foreground">{formatFileSize(selectedFile.size)}</p> : null}
+                <Button type="button" variant="outline" size="sm" className="mt-4 bg-white" disabled={uploading} onClick={() => fileInputRef.current?.click()}>Selecionar arquivos</Button>
+                <Input ref={fileInputRef} id="document-file" type="file" multiple className="sr-only" accept=".pdf,.doc,.docx,.xls,.xlsx,.ods,.odt,.csv,.txt,.png,.jpg,.jpeg" onChange={(event) => { if (event.target.files) addFiles(event.target.files); event.target.value = "" }} />
+              </div>
+              {selectedFiles.length ? (
+                <div className="max-h-56 divide-y overflow-y-auto rounded-xl border">
+                  {selectedFiles.map((file) => {
+                    const status = uploadStatuses[fileKey(file)]
+                    return <div key={fileKey(file)} className="flex items-center gap-3 px-3 py-2.5"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#4338FF]/10 text-[#4338FF]">{status?.state === "uploading" ? <Loader2 className="h-4 w-4 animate-spin" /> : status?.state === "success" ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : status?.state === "error" ? <X className="h-4 w-4 text-destructive" /> : <FileText className="h-4 w-4" />}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{file.name}</p><p className={`truncate text-xs ${status?.state === "error" ? "text-destructive" : "text-muted-foreground"}`}>{status?.message ?? formatFileSize(file.size)}</p></div><Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={uploading} onClick={() => removeSelectedFile(file)} aria-label={`Remover ${file.name}`}><X className="h-4 w-4" /></Button></div>
+                  })}
+                </div>
+              ) : null}
             </div>
             {uploadError ? <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{uploadError}</p> : null}
-            <DialogFooter><Button type="button" variant="outline" onClick={() => setUploadOpen(false)} disabled={uploading}>Cancelar</Button><Button type="submit" disabled={uploading}>{uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando</> : <><UploadCloud className="mr-2 h-4 w-4" />Salvar documento</>}</Button></DialogFooter>
+            <DialogFooter><Button type="button" variant="outline" onClick={() => setUploadOpen(false)} disabled={uploading}>Cancelar</Button><Button type="submit" disabled={uploading || !selectedFiles.length}>{uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Enviando {Object.values(uploadStatuses).filter((status) => status.state === "success" || status.state === "error").length}/{selectedFiles.length}</> : <><UploadCloud className="mr-2 h-4 w-4" />Enviar {selectedFiles.length || ""} {selectedFiles.length === 1 ? "documento" : "documentos"}</>}</Button></DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
