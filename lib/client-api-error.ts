@@ -18,9 +18,17 @@ function detailMessage(details: unknown): string {
   return ""
 }
 
+export function getApiErrorMessage(
+  payload: ApiErrorPayload,
+  fallback = "Não foi possível concluir a operação.",
+) {
+  const structured = typeof payload.error === "object" ? payload.error : undefined
+  return detailMessage(structured?.details ?? payload.detail ?? payload.error) || fallback
+}
+
 export function formatApiError(status: number, payload: ApiErrorPayload) {
   const structured = typeof payload.error === "object" ? payload.error : undefined
-  const message = detailMessage(structured?.details ?? payload.detail ?? payload.error)
+  const message = getApiErrorMessage(payload)
   const code = structured?.code ? ` · ${structured.code}` : ""
-  return `Erro ${structured?.status ?? status}${code}: ${message || "Não foi possível concluir a operação."}`
+  return `Erro ${structured?.status ?? status}${code}: ${message}`
 }

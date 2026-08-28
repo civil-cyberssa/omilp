@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { getApiErrorMessage } from "@/lib/client-api-error"
 
 export default function DashboardLoginPage() {
   const router = useRouter()
@@ -20,21 +21,26 @@ export default function DashboardLoginPage() {
     event.preventDefault()
     setSubmitting(true)
     setError("")
-    const form = new FormData(event.currentTarget)
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
-    })
-    if (!response.ok) {
-      const payload = await response.json()
-      setError(payload.error ?? "Não foi possível entrar.")
+    try {
+      const form = new FormData(event.currentTarget)
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        setError(getApiErrorMessage(payload, "Não foi possível entrar."))
+        return
+      }
+      const nextPath = new URLSearchParams(window.location.search).get("next")
+      router.replace(nextPath?.startsWith("/dashboard") ? nextPath : "/dashboard")
+      router.refresh()
+    } catch {
+      setError("Não foi possível conectar ao servidor. Tente novamente.")
+    } finally {
       setSubmitting(false)
-      return
     }
-    const nextPath = new URLSearchParams(window.location.search).get("next")
-    router.replace(nextPath?.startsWith("/dashboard") ? nextPath : "/dashboard")
-    router.refresh()
   }
 
   return (

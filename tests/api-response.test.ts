@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest"
 vi.mock("server-only", () => ({}))
 
 import { proxyUpstreamResponse, readUpstreamJson, withRouteErrorHandling } from "@/lib/api-response"
-import { formatApiError } from "@/lib/client-api-error"
+import { formatApiError, getApiErrorMessage } from "@/lib/client-api-error"
 
 describe("respostas das rotas", () => {
   it("converte erro HTML do serviço em JSON com status preservado", async () => {
@@ -59,5 +59,15 @@ describe("respostas das rotas", () => {
         details: { payment_gateway: "Callback inválido" },
       },
     })).toBe("Erro 400 · VALIDATION_ERROR: Callback inválido")
+  })
+
+  it("extrai a mensagem de um erro estruturado de autenticação", () => {
+    expect(getApiErrorMessage({
+      error: {
+        status: 401,
+        code: "INVALID_CREDENTIALS",
+        details: { message: "E-mail ou senha inválidos." },
+      },
+    }, "Não foi possível entrar.")).toBe("E-mail ou senha inválidos.")
   })
 })
