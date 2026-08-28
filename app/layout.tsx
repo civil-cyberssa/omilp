@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Script from 'next/script'
 import './globals.css'
 import WhatsappButton from '@/components/whatsapp-button'
+import { Toaster } from '@/components/ui/sonner'
 
 const siteUrl = 'https://omitech.com.br'
 
@@ -275,6 +276,7 @@ export default function RootLayout({
         />
         {children}
         <WhatsappButton />
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   )

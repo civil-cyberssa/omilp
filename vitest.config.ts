@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": __dirname,
+      "server-only": `${__dirname}/tests/server-only.ts`,
     },
   },
   test: {

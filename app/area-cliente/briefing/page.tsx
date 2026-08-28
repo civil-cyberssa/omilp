@@ -1,0 +1,4 @@
+import Footer from "@/components/footer"
+import Navbar from "@/components/navbar"
+import { BriefingForm } from "@/components/briefing-form"
+export default async function PortalBriefingPage({ searchParams }: { searchParams: Promise<{ tipo?: string; id?: string }> }) { const { tipo, id } = await searchParams; const valid = tipo === "order" || tipo === "subscription"; return <main className="min-h-screen bg-[linear-gradient(135deg,#020617,#07143D,#17062D)] text-white"><Navbar /><section className="container mx-auto max-w-4xl px-6 pb-24 pt-36"><p className="text-xs uppercase tracking-[.25em] text-[#8EA8FF]">Área do cliente</p><h1 className="mb-9 mt-4 text-4xl font-semibold">Novo briefing</h1>{valid && id ? <div className="border border-white/12 bg-white/[.025] p-6 md:p-9"><BriefingForm endpoint="/api/portal/briefings" resource={{ type: tipo, id }} /></div> : <p>Pedido ou assinatura não encontrado.</p>}</section><Footer /></main> }

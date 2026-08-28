@@ -1,5 +1,7 @@
 "use client"
 
+import { trackAnalyticsEvent } from "@/lib/analytics"
+
 export default function WhatsappButton() {
   return (
     <a
@@ -7,7 +9,8 @@ export default function WhatsappButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="WhatsApp"
-      className="fixed bottom-6 right-6 z-50 bg-green-500 text-white p-3 rounded-full shadow-lg hover:bg-green-600 transition-colors"
+      onClick={() => void trackAnalyticsEvent("whatsapp_click", { placement: "floating_button" })}
+      className="fixed bottom-6 right-6 z-50 rounded-full bg-gradient-to-br from-[#155EEF] via-[#7C2AE8] to-[#D000B8] p-3 text-white shadow-[0_12px_36px_rgba(67,56,255,.38)] transition hover:scale-105 hover:brightness-110"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

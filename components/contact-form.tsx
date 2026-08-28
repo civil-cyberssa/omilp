@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 
+import { trackAnalyticsEvent } from "@/lib/analytics"
+
 type HumanChallenge = {
   left: number
   right: number
@@ -72,6 +74,7 @@ export default function ContactForm() {
       }
 
       setSubmitStatus("success")
+      void trackAnalyticsEvent("contact_submit", { form: "contact" })
       setFormData({ name: "", email: "", company: "", message: "", humanAnswer: "" })
       setHumanChallenge(createHumanChallenge())
     } catch (error) {
@@ -202,7 +205,7 @@ export default function ContactForm() {
                 </button>
 
                 {submitStatus === "success" && (
-                  <p className="mt-4 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+                  <p className="mt-4 rounded-lg border border-[#4338FF]/35 bg-[#4338FF]/10 px-4 py-3 text-sm text-[#C7D2FE]">
                     Mensagem recebida com sucesso! Em breve entraremos em contato.
                   </p>
                 )}

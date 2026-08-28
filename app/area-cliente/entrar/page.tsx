@@ -1,0 +1,4 @@
+import Footer from "@/components/footer"
+import Navbar from "@/components/navbar"
+import { PortalAccessForm } from "@/components/portal-access-form"
+export default function PortalLoginPage() { return <main className="min-h-screen bg-[radial-gradient(circle_at_15%_10%,rgba(21,94,239,.22),transparent_28%),radial-gradient(circle_at_85%_85%,rgba(208,0,184,.16),transparent_30%),#020617] text-white"><Navbar /><section className="container mx-auto flex min-h-[78vh] max-w-lg items-center px-6 py-32"><div className="w-full border border-white/12 bg-[#07143D]/60 p-7 backdrop-blur-xl md:p-10"><p className="text-xs font-semibold uppercase tracking-[.25em] text-[#8EA8FF]">Área do cliente</p><h1 className="mt-4 text-4xl font-semibold tracking-[-.04em]">Entre sem senha.</h1><p className="mb-8 mt-4 leading-7 text-white/52">Enviaremos um link seguro e temporário para o seu e-mail.</p><PortalAccessForm /></div></section><Footer /></main> }

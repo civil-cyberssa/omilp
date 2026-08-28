@@ -3,25 +3,42 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 0%;
-  --foreground: 0 0% 100%;
-  --card: 0 0% 3%;
-  --card-foreground: 0 0% 100%;
-  --popover: 0 0% 3%;
-  --popover-foreground: 0 0% 100%;
-  --primary: 262 83% 58%;
+  --background: 229 84% 5%;
+  --foreground: 210 40% 98%;
+  --card: 225 79% 13%;
+  --card-foreground: 210 40% 98%;
+  --popover: 225 79% 13%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 220 85% 51%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 240 4% 16%;
+  --secondary: 243 100% 61%;
   --secondary-foreground: 0 0% 100%;
-  --muted: 240 4% 16%;
-  --muted-foreground: 240 5% 65%;
-  --accent: 240 4% 16%;
+  --muted: 225 53% 18%;
+  --muted-foreground: 226 28% 72%;
+  --accent: 268 80% 54%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 63% 31%;
   --destructive-foreground: 0 0% 100%;
-  --border: 240 4% 16%;
-  --input: 240 4% 16%;
-  --ring: 262 83% 58%;
+  --border: 225 45% 24%;
+  --input: 225 45% 24%;
+  --ring: 243 100% 61%;
+}
+
+.omi-dashboard {
+  --background: 0 0% 100%;
+  --foreground: 229 84% 5%;
+  --card: 0 0% 100%;
+  --card-foreground: 229 84% 5%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 229 84% 5%;
+  --secondary: 248 100% 96%;
+  --secondary-foreground: 229 84% 12%;
+  --muted: 228 100% 98%;
+  --muted-foreground: 226 23% 42%;
+  --accent: 248 100% 96%;
+  --accent-foreground: 243 100% 40%;
+  --border: 230 48% 90%;
+  --input: 230 48% 88%;
 }
 
 @layer base {
@@ -284,4 +301,62 @@
   .blueprint-line::after {
     animation: none;
   }
+}
+
+.tiptap {
+  min-height: 20rem;
+  padding: 1.25rem;
+  outline: none;
+}
+
+.tiptap > * + * {
+  margin-top: 0.8em;
+}
+
+.tiptap h2 {
+  margin-top: 1.5em;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.tiptap h3 {
+  margin-top: 1.35em;
+  font-size: 1.2rem;
+  font-weight: 650;
+}
+
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.5rem;
+}
+
+.tiptap ul { list-style: disc; }
+.tiptap ol { list-style: decimal; }
+
+.tiptap blockquote {
+  border-left: 3px solid hsl(var(--primary));
+  padding-left: 1rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.tiptap pre {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: #101310;
+  padding: 1rem;
+  color: #f4f7ef;
+}
+
+.tiptap a {
+  color: #155eef;
+  text-decoration: underline;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  float: left;
+  height: 0;
+  color: hsl(var(--muted-foreground));
+  content: attr(data-placeholder);
+  pointer-events: none;
 }

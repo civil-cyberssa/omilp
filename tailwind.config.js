@@ -50,7 +50,7 @@ const config = {
       },
     },
   },
-  plugins: [],
+  plugins: [require("@tailwindcss/typography")],
 }
 
 module.exports = config

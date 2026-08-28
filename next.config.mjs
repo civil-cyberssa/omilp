@@ -5,8 +5,11 @@ try {
   // ignore error
 }
 
+const mediaUrl = new URL(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  distDir: process.env.NODE_ENV === 'development' ? '.next-dev' : '.next',
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -15,6 +18,12 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    remotePatterns: [{
+      protocol: mediaUrl.protocol.replace(':', ''),
+      hostname: mediaUrl.hostname,
+      port: mediaUrl.port,
+      pathname: '/media/**',
+    }],
   },
   experimental: {
     webpackBuildWorker: true,

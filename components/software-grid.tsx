@@ -27,7 +27,7 @@ const modules = [
     description: "Jornadas rapidas para clientes, equipe ou campo.",
     icon: Smartphone,
     className: "lg:left-[3%] lg:bottom-[18%]",
-    tone: "from-lime-300 to-emerald-500",
+    tone: "from-[#155EEF] to-[#7C2AE8]",
   },
   {
     title: "Automacoes",
@@ -98,7 +98,7 @@ export default function SoftwareGrid({ id }: { id?: string }) {
             <span className="absolute h-24 w-24 rounded-full bg-cyan-300/20 blur-xl" aria-hidden="true" />
             <span className="absolute h-3 w-3 rounded-full bg-cyan-200 shadow-[0_0_22px_rgba(103,232,249,0.9)]" aria-hidden="true" />
             <h3 className="relative z-10 flex items-center gap-2 rounded-full border border-cyan-200/25 bg-black/55 px-5 py-2 text-sm font-semibold uppercase tracking-[0.18em] text-cyan-50 shadow-[0_0_30px_rgba(34,211,238,0.16)] backdrop-blur-md">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.9)]" aria-hidden="true" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#4338FF] shadow-[0_0_12px_rgba(67,56,255,0.9)]" aria-hidden="true" />
               Sua empresa
             </h3>
           </div>
@@ -123,7 +123,7 @@ export default function SoftwareGrid({ id }: { id?: string }) {
 
           <div className="absolute bottom-6 left-6 right-6 z-20 grid grid-cols-3 gap-3 rounded-2xl border border-white/10 bg-black/50 p-3 text-xs text-white/60 backdrop-blur-xl">
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_16px_rgba(110,231,183,0.9)]" />
+              <span className="h-2 w-2 rounded-full bg-[#4338FF] shadow-[0_0_16px_rgba(67,56,255,0.9)]" />
               Dados sincronizados
             </div>
             <div className="flex items-center justify-center gap-2">
@@ -149,7 +149,7 @@ export default function SoftwareGrid({ id }: { id?: string }) {
               <span className="absolute h-20 w-20 rounded-full bg-cyan-300/20 blur-xl" aria-hidden="true" />
               <span className="absolute h-2.5 w-2.5 rounded-full bg-cyan-200 shadow-[0_0_18px_rgba(103,232,249,0.9)]" aria-hidden="true" />
               <h3 className="relative z-10 flex items-center gap-2 rounded-full border border-cyan-200/25 bg-black/55 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.16)] backdrop-blur-md">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.9)]" aria-hidden="true" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#4338FF] shadow-[0_0_12px_rgba(67,56,255,0.9)]" aria-hidden="true" />
                 Sua empresa
               </h3>
             </div>

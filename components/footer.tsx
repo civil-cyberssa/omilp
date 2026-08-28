@@ -3,10 +3,13 @@ import Link from "next/link"
 import { Building2, Instagram, Linkedin, MapPin, Phone } from "lucide-react"
 
 const navLinks = [
-  { label: "Produtos", href: "#products" },
-  { label: "Soluções", href: "#solutions" },
-  { label: "Clientes", href: "#clients" },
-  { label: "Contato", href: "#contact" },
+  { label: "Produtos", href: "/#products" },
+  { label: "Soluções", href: "/#solutions" },
+  { label: "Clientes", href: "/#clients" },
+  { label: "Blog", href: "/blog" },
+  { label: "Site por assinatura", href: "/site-por-assinatura" },
+  { label: "Área do cliente", href: "/area-cliente" },
+  { label: "Contato", href: "/#contact" },
 ]
 
 const solutionLinks = [
