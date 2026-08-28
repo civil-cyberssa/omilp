@@ -41,10 +41,9 @@ function AnimatedCounter({
     if (!shouldStart) return
 
     let animationFrame = 0
-    let timeout: ReturnType<typeof setTimeout>
     const duration = 1400
 
-    timeout = setTimeout(() => {
+    const timeout = setTimeout(() => {
       const startedAt = performance.now()
 
       const animate = (timestamp: number) => {

@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { FormEvent, useState } from "react"
 import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react"
@@ -9,8 +10,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { getApiErrorMessage } from "@/lib/client-api-error"
-
 export default function DashboardLoginPage() {
   const router = useRouter()
   const [error, setError] = useState("")
@@ -23,18 +22,21 @@ export default function DashboardLoginPage() {
     setError("")
     try {
       const form = new FormData(event.currentTarget)
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: form.get("email"), password: form.get("password") }),
+      const nextPath = new URLSearchParams(window.location.search).get("next")
+      const destination = nextPath?.startsWith("/dashboard") && !nextPath.startsWith("//")
+        ? nextPath
+        : "/dashboard"
+      const result = await signIn("credentials", {
+        email: String(form.get("email") ?? ""),
+        password: String(form.get("password") ?? ""),
+        redirect: false,
+        redirectTo: destination,
       })
-      if (!response.ok) {
-        const payload = await response.json().catch(() => ({}))
-        setError(getApiErrorMessage(payload, "Não foi possível entrar."))
+      if (!result?.ok || result.error) {
+        setError("E-mail ou senha inválidos.")
         return
       }
-      const nextPath = new URLSearchParams(window.location.search).get("next")
-      router.replace(nextPath?.startsWith("/dashboard") ? nextPath : "/dashboard")
+      router.replace(destination)
       router.refresh()
     } catch {
       setError("Não foi possível conectar ao servidor. Tente novamente.")

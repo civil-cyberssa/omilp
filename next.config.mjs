@@ -1,20 +1,23 @@
+import { buildSecurityHeaders } from './lib/security-headers.mjs'
+
 let userConfig = undefined
 try {
   userConfig = await import('./v0-user-next.config')
-} catch (e) {
+} catch {
   // ignore error
 }
 
 const mediaUrl = new URL(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1')
+const production = process.env.NODE_ENV === 'production'
+const securityHeaders = buildSecurityHeaders(mediaUrl, production)
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  agentRules: false,
+  poweredByHeader: false,
   distDir: process.env.NODE_ENV === 'development' ? '.next-dev' : '.next',
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
+  async headers() {
+    return [{ source: '/:path*', headers: securityHeaders }]
   },
   images: {
     unoptimized: true,
@@ -24,11 +27,6 @@ const nextConfig = {
       port: mediaUrl.port,
       pathname: '/media/**',
     }],
-  },
-  experimental: {
-    webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
-    parallelServerCompiles: true,
   },
 }
 

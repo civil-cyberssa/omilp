@@ -5,9 +5,9 @@ import { NextResponse } from "next/server"
 
 import { backendEndpoint } from "@/lib/server-auth"
 import { proxyUpstreamResponse } from "@/lib/api-response"
+import { PORTAL_COOKIE, PURCHASE_COOKIE } from "@/lib/auth-config"
 
-export const PORTAL_COOKIE = "omi_portal"
-export const PURCHASE_COOKIE = "omi_purchase"
+export { PORTAL_COOKIE, PURCHASE_COOKIE }
 
 const secure = process.env.NODE_ENV === "production"
 const baseOptions = { httpOnly: true, secure, sameSite: "lax" as const, path: "/" }

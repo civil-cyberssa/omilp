@@ -5,7 +5,8 @@ import { notFound } from "next/navigation"
 import { CheckoutForm } from "@/components/checkout-form"
 import Footer from "@/components/footer"
 import Navbar from "@/components/navbar"
-import { cycleLabel, formatMoney, getOffer } from "@/lib/commerce"
+import { OfferPrice } from "@/components/offer-price"
+import { getOffer } from "@/lib/commerce"
 
 type Props = { params: Promise<{ slug: string }> }
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -22,7 +23,7 @@ export default async function CheckoutPage({ params }: Props) {
         <p className="text-xs font-semibold uppercase tracking-[.26em] text-[#8EA8FF]">Sua escolha</p>
         <h1 className="mt-4 text-5xl font-semibold tracking-[-.05em]">{offer.name}</h1>
         <p className="mt-5 max-w-lg leading-7 text-white/58">{offer.description || offer.short_description}</p>
-        <p className="mt-9 text-4xl font-semibold">{formatMoney(offer.price)}{offer.kind === "SUBSCRIPTION" ? <span className="text-sm font-normal text-white/45"> / {cycleLabel[offer.cycle] ?? "período"}</span> : null}</p>
+        <OfferPrice offer={offer} className="mt-9" />
         <ul className="mt-8 space-y-3 border-t border-white/10 pt-7">{offer.features.map((item) => <li key={item} className="flex gap-3 text-sm text-white/68"><Check className="h-4 w-4 text-[#8EA8FF]" />{item}</li>)}</ul>
       </div>
       <div className="border border-white/12 bg-[#020617]/70 p-6 shadow-2xl backdrop-blur-xl md:p-10">

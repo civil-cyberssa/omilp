@@ -14,7 +14,8 @@ import {
 import AnalyticsTracker from "@/components/analytics-tracker"
 import Footer from "@/components/footer"
 import Navbar from "@/components/navbar"
-import { cycleLabel, formatMoney, getOffers } from "@/lib/commerce"
+import { OfferPrice } from "@/components/offer-price"
+import { getOffers } from "@/lib/commerce"
 
 const siteUrl = "https://omitech.com.br"
 const pageUrl = `${siteUrl}/site-por-assinatura`
@@ -267,10 +268,7 @@ export default async function SitePorAssinaturaPage() {
                   </div>
                   <h3 className="mt-7 text-2xl font-semibold tracking-[-.03em]">{offer.name}</h3>
                   <p className="mt-3 min-h-12 text-sm leading-6 text-white/52">{offer.short_description}</p>
-                  <p className="mt-8 text-4xl font-semibold tracking-[-.045em]">
-                    {formatMoney(offer.price)}
-                    {offer.kind === "SUBSCRIPTION" ? <span className="ml-1 text-sm font-normal tracking-normal text-white/42">/ {cycleLabel[offer.cycle] ?? "período"}</span> : null}
-                  </p>
+                  <OfferPrice offer={offer} />
                   <ul className="mt-7 flex-1 space-y-3 border-t border-white/10 pt-6">
                     {offer.features.map((feature) => (
                       <li key={feature} className="flex gap-3 text-sm leading-5 text-white/68">

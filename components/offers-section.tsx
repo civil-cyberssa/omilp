@@ -1,7 +1,8 @@
 import { ArrowRight, Check } from "lucide-react"
 import Link from "next/link"
 
-import { cycleLabel, formatMoney, getOffers } from "@/lib/commerce"
+import { OfferPrice } from "@/components/offer-price"
+import { getOffers } from "@/lib/commerce"
 
 export default async function OffersSection() {
   const offers = await getOffers()
@@ -22,7 +23,7 @@ export default async function OffersSection() {
               <p className="pr-24 text-xs font-semibold uppercase tracking-[.2em] text-white/45">{offer.kind === "SUBSCRIPTION" ? "Assinatura" : "Projeto único"}</p>
               <h3 className="mt-5 text-2xl font-semibold">{offer.name}</h3>
               <p className="mt-3 min-h-12 text-sm leading-6 text-white/55">{offer.short_description}</p>
-              <p className="mt-8 text-4xl font-semibold tracking-[-.04em]">{formatMoney(offer.price)}{offer.kind === "SUBSCRIPTION" ? <span className="text-sm font-normal text-white/45"> / {cycleLabel[offer.cycle] ?? "período"}</span> : null}</p>
+              <OfferPrice offer={offer} />
               <ul className="mt-7 flex-1 space-y-3 border-t border-white/10 pt-6">
                 {offer.features.map((feature) => <li key={feature} className="flex gap-3 text-sm text-white/70"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#8EA8FF]" />{feature}</li>)}
               </ul>

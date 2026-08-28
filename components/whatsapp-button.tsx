@@ -1,8 +1,14 @@
 "use client"
 
+import { usePathname } from "next/navigation"
+
 import { trackAnalyticsEvent } from "@/lib/analytics"
 
 export default function WhatsappButton() {
+  const pathname = usePathname()
+
+  if (pathname.startsWith("/dashboard")) return null
+
   return (
     <a
       href="https://wa.me/5571992997191"

@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest"
 
-import { formatDashboardDateTime, formatFileSize } from "@/lib/dashboard-api"
+import {
+  collectionResults,
+  formatDashboardDateTime,
+  formatFileSize,
+} from "@/lib/dashboard-api"
+
+describe("collectionResults", () => {
+  it("normaliza coleções diretas e paginadas", () => {
+    const items = [{ id: "event-1" }]
+
+    expect(collectionResults(items)).toEqual(items)
+    expect(
+      collectionResults({ count: 1, next: null, previous: null, results: items }),
+    ).toEqual(items)
+    expect(collectionResults(undefined)).toEqual([])
+  })
+})
 
 describe("formatDashboardDateTime", () => {
   it("formata data e hora no fuso de Salvador", () => {

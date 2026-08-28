@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { signOut } from "next-auth/react"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import useSWR from "swr"
@@ -66,7 +67,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   }, [error, router])
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" })
+    await signOut({ redirect: false })
     router.replace("/dashboard/login")
     router.refresh()
   }

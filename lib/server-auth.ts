@@ -1,71 +1,71 @@
 import "server-only"
 
+import { encode, getToken, type JWT } from "next-auth/jwt"
 import type { NextRequest } from "next/server"
-import { NextResponse } from "next/server"
 
 import { apiError, proxyUpstreamResponse } from "@/lib/api-response"
+import {
+  AUTH_SESSION_COOKIE,
+  AUTH_SESSION_MAX_AGE,
+  getAuthSecret,
+} from "@/lib/auth-config"
+import {
+  accessTokenExpiresAt,
+  backendEndpoint,
+  refreshBackendTokens,
+} from "@/lib/backend-auth"
 
-export const ACCESS_COOKIE = "omi_access"
-export const REFRESH_COOKIE = "omi_refresh"
-
-type TokenPair = { access: string; refresh?: string }
-
-const backendUrl = (
-  process.env.API_URL ??
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:8000"
-).replace(/\/api\/v1\/?$/, "")
-
-const accessCookieOptions = {
+const authCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
   path: "/",
-  maxAge: 30 * 60,
+  maxAge: AUTH_SESSION_MAX_AGE,
 }
 
-const refreshCookieOptions = {
-  ...accessCookieOptions,
-  maxAge: 7 * 24 * 60 * 60,
-}
-
-export function backendEndpoint(path: string) {
-  return `${backendUrl}${path.startsWith("/") ? path : `/${path}`}`
-}
-
-export function setAuthCookies(response: NextResponse, tokens: TokenPair) {
-  response.cookies.set(ACCESS_COOKIE, tokens.access, accessCookieOptions)
-  if (tokens.refresh) {
-    response.cookies.set(REFRESH_COOKIE, tokens.refresh, refreshCookieOptions)
-  }
-}
-
-export function clearAuthCookies(response: NextResponse) {
-  response.cookies.set(ACCESS_COOKIE, "", { ...accessCookieOptions, maxAge: 0 })
-  response.cookies.set(REFRESH_COOKIE, "", { ...refreshCookieOptions, maxAge: 0 })
-}
+export { backendEndpoint }
 
 export function validateMutationOrigin(request: NextRequest) {
   const origin = request.headers.get("origin")
   if (!origin) return false
-  const allowedOrigin = process.env.NEXT_PUBLIC_SITE_URL ?? request.nextUrl.origin
-  return origin === request.nextUrl.origin || origin === allowedOrigin
+  const configuredSite = process.env.NEXT_PUBLIC_SITE_URL
+  if (configuredSite) {
+    try {
+      return new URL(origin).origin === new URL(configuredSite).origin
+    } catch {
+      return false
+    }
+  }
+  if (process.env.NODE_ENV === "production") return false
+  try {
+    return new URL(origin).origin === request.nextUrl.origin
+  } catch {
+    return false
+  }
 }
 
-async function refreshAccessToken(refresh: string): Promise<TokenPair | null> {
-  const response = await fetch(backendEndpoint("/api/auth/token/refresh/"), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh }),
-    cache: "no-store",
-  })
-  if (!response.ok) return null
-  return response.json()
+async function readAuthToken(request: NextRequest) {
+  const secret = getAuthSecret()
+  if (!secret) return null
+  return getToken({ req: request, secret, cookieName: AUTH_SESSION_COOKIE })
+}
+
+async function refreshedAuthToken(token: JWT) {
+  if (!token.backendRefreshToken) return null
+  const tokens = await refreshBackendTokens(token.backendRefreshToken)
+  if (!tokens) return null
+  return {
+    ...token,
+    backendAccessToken: tokens.access,
+    backendRefreshToken: tokens.refresh ?? token.backendRefreshToken,
+    backendAccessTokenExpiresAt: accessTokenExpiresAt(tokens.access),
+    error: undefined,
+  } satisfies JWT
 }
 
 type AuthenticatedRequestResult = {
   response: Response
-  tokens?: TokenPair
+  authToken?: JWT
   clearSession?: boolean
 }
 
@@ -75,21 +75,40 @@ export async function authenticatedBackendRequest(
   init: RequestInit = {},
 ): Promise<AuthenticatedRequestResult> {
   try {
-    const access = request.cookies.get(ACCESS_COOKIE)?.value
-    const refresh = request.cookies.get(REFRESH_COOKIE)?.value
+    let token = await readAuthToken(request)
+    if (!token?.backendAccessToken) {
+      return {
+        response: apiError(401, "SESSION_EXPIRED", { message: "Sessão expirada." }),
+        clearSession: true,
+      }
+    }
+
+    if (
+      token.backendAccessTokenExpiresAt &&
+      Date.now() >= token.backendAccessTokenExpiresAt - 30_000
+    ) {
+      const refreshed = await refreshedAuthToken(token)
+      if (!refreshed) {
+        return {
+          response: apiError(401, "SESSION_EXPIRED", { message: "Sessão expirada." }),
+          clearSession: true,
+        }
+      }
+      token = refreshed
+    }
+
     const headers = new Headers(init.headers)
-    if (access) headers.set("Authorization", `Bearer ${access}`)
+    headers.set("Authorization", `Bearer ${token.backendAccessToken}`)
 
     let response = await fetch(backendEndpoint(path), { ...init, headers, cache: "no-store" })
-    if (response.status !== 401) return { response }
-    if (!refresh) return { response, clearSession: true }
+    if (response.status !== 401) return { response, authToken: token }
 
-    const tokens = await refreshAccessToken(refresh)
-    if (!tokens) return { response, clearSession: true }
+    const refreshed = await refreshedAuthToken(token)
+    if (!refreshed) return { response, clearSession: true }
 
-    headers.set("Authorization", `Bearer ${tokens.access}`)
+    headers.set("Authorization", `Bearer ${refreshed.backendAccessToken}`)
     response = await fetch(backendEndpoint(path), { ...init, headers, cache: "no-store" })
-    return { response, tokens, clearSession: response.status === 401 }
+    return { response, authToken: refreshed, clearSession: response.status === 401 }
   } catch (cause) {
     console.error(`[backend] ${path}`, cause)
     return {
@@ -102,8 +121,19 @@ export async function authenticatedBackendRequest(
 
 export async function toNextResponse(result: AuthenticatedRequestResult) {
   const response = await proxyUpstreamResponse(result.response)
-  if (result.tokens) setAuthCookies(response, result.tokens)
-  if (result.clearSession) clearAuthCookies(response)
+  const secret = getAuthSecret()
+  if (result.authToken && secret) {
+    const value = await encode({
+      token: result.authToken,
+      secret,
+      salt: AUTH_SESSION_COOKIE,
+      maxAge: AUTH_SESSION_MAX_AGE,
+    })
+    response.cookies.set(AUTH_SESSION_COOKIE, value, authCookieOptions)
+  }
+  if (result.clearSession) {
+    response.cookies.set(AUTH_SESSION_COOKIE, "", { ...authCookieOptions, maxAge: 0 })
+  }
   return response
 }
 

@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "dependencies": {
@@ -52,12 +52,13 @@
     "embla-carousel-react": "8.5.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
-    "next": "^15.5.24",
+    "next": "^16.3.3",
+    "next-auth": "^5.0.0-beta.32",
     "next-themes": "^0.4.4",
-    "nodemailer": "^9.0.1",
-    "react": "^19",
+    "nodemailer": "^9.0.6",
+    "react": "^19.2.8",
     "react-day-picker": "8.10.2",
-    "react-dom": "^19",
+    "react-dom": "^19.2.8",
     "react-hook-form": "^7.54.1",
     "react-resizable-panels": "^2.1.7",
     "recharts": "3.8.1",
@@ -76,8 +77,10 @@
     "@testing-library/react": "16.3.2",
     "@types/node": "^22",
     "@types/nodemailer": "^8.0.1",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.3",
     "happy-dom": "20.10.6",
     "postcss": "^8",
     "tailwindcss": "^3.4.17",
@@ -85,11 +88,9 @@
     "vitest": "3.2.6"
   },
   "overrides": {
-    "next": {
-      "postcss": "8.5.10"
-    },
     "vite": {
       "esbuild": "0.28.1"
     }
-  }
+  },
+  "packageManager": "pnpm@11.24.0+sha512.bd27e345e976dcb0be0b7a1228217b049a817e21b1f355c90dbe7dc46671895a8bc1e6d06c24554505ea93ea0b45f489a27ec1bfbc8de6a9659fca0f16fa0000"
 }

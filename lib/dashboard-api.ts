@@ -29,6 +29,13 @@ export type PagedResponse<T> = {
   results: T[]
 }
 
+export type CollectionResponse<T> = T[] | PagedResponse<T>
+
+export function collectionResults<T>(response: CollectionResponse<T> | undefined): T[] {
+  if (Array.isArray(response)) return response
+  return Array.isArray(response?.results) ? response.results : []
+}
+
 export type DashboardSummary = {
   total: number
   draft: number
@@ -85,6 +92,27 @@ export type DashboardDocument = {
   content_type: string
   file_size: number
   uploaded_by_name: string
+  created_at: string
+  updated_at: string
+}
+
+export type CalendarEventType = "PAYMENT" | "CHARGE" | "DEADLINE"
+export type DashboardCalendarEvent = {
+  id: string
+  title: string
+  description: string
+  event_type: CalendarEventType
+  event_type_label: string
+  event_date: string
+  is_completed: boolean
+  order: string | null
+  subscription: string | null
+  payment: string | null
+  invoice: string | null
+  related_label: string
+  amount: number | null
+  customer_name: string
+  created_by_name: string
   created_at: string
   updated_at: string
 }

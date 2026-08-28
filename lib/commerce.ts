@@ -46,3 +46,22 @@ export const cycleLabel: Record<string, string> = {
   WEEKLY: "semana", BIWEEKLY: "quinzena", MONTHLY: "mês", BIMONTHLY: "bimestre",
   QUARTERLY: "trimestre", SEMIANNUALLY: "semestre", YEARLY: "ano",
 }
+
+export function getOfferPricing(
+  offer: Pick<Offer, "kind" | "cycle" | "price">,
+) {
+  const total = Number(offer.price)
+  const isYearly = offer.kind === "SUBSCRIPTION" && offer.cycle === "YEARLY"
+
+  return {
+    displayAmount: isYearly ? total / 12 : total,
+    displayCycle:
+      offer.kind === "SUBSCRIPTION"
+        ? isYearly
+          ? "mês"
+          : cycleLabel[offer.cycle] ?? "período"
+        : null,
+    annualTotal: isYearly ? total : null,
+    isYearly,
+  }
+}
