@@ -102,7 +102,7 @@ export default function HeroSection() {
   }, [])
 
   return (
-    <section className="relative h-screen w-full flex items-center justify-center overflow-hidden">
+    <section className="relative flex h-screen w-full items-start justify-center overflow-hidden pt-24 lg:items-center lg:pt-0">
       {/* Gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-black via-purple-900/20 to-black z-0"></div>
 
