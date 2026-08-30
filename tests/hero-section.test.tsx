@@ -17,7 +17,6 @@ vi.mock("@react-three/fiber", () => ({
 // Mock para componentes do drei
 vi.mock("@react-three/drei", () => ({
   OrbitControls: () => <div data-testid="orbit-controls-mock" />,
-  Environment: () => <div data-testid="environment-mock" />,
   Float: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="float-mock">{children}</div>
   ),
@@ -64,6 +63,5 @@ describe("HeroSection", () => {
     expect(screen.getByTestId("float-mock")).toBeInTheDocument()
     expect(screen.getByTestId("omi-model-mock")).toBeInTheDocument()
     expect(screen.getByTestId("orbit-controls-mock")).toBeInTheDocument()
-    expect(screen.getByTestId("environment-mock")).toBeInTheDocument()
   })
 })

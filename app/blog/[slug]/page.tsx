@@ -5,6 +5,7 @@ import { ArrowLeft, Clock3 } from "lucide-react"
 import { notFound } from "next/navigation"
 
 import Footer from "@/components/footer"
+import { BlogViewTracker } from "@/components/blog-view-tracker"
 import Navbar from "@/components/navbar"
 import { formatPostDate, getBlogPost } from "@/lib/blog"
 
@@ -35,6 +36,7 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-[linear-gradient(135deg,#FFFFFF_0%,#F5F7FF_58%,#EEE9FF_100%)] text-[#020617]">
+      <BlogViewTracker slug={post.slug} />
       <div className="bg-[#020617] text-white"><Navbar /></div>
       <article>
         <header className="relative overflow-hidden bg-[#020617] px-6 pb-20 pt-36 text-white md:pb-28 md:pt-44">

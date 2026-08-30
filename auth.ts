@@ -30,7 +30,6 @@ const credentialsSchema = z.object({
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: getAuthSecret(),
-  trustHost: isVercel || process.env.AUTH_TRUST_HOST === "true",
   pages: { signIn: "/dashboard/login" },
   session: { strategy: "jwt", maxAge: AUTH_SESSION_MAX_AGE },
   cookies: {

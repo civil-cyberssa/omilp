@@ -14,6 +14,7 @@ export type DashboardPost = {
   category: Category | null
   author_name: string
   reading_time: number
+  view_count: number
   status: PostStatus
   published_at: string | null
   seo_title: string
@@ -41,6 +42,7 @@ export type DashboardSummary = {
   draft: number
   published: number
   archived: number
+  total_views: number
 }
 
 export type AnalyticsSummary = {

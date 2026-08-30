@@ -12,12 +12,32 @@ import {
   startOfWeek,
 } from "date-fns"
 import { ptBR } from "date-fns/locale"
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  Pencil,
+  Plus,
+  UserRound,
+  WalletCards,
+} from "lucide-react"
 import { useMemo, useState } from "react"
 import useSWR from "swr"
 
+import { CalendarEventDialog } from "@/components/dashboard/calendar-event-dialog"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatMoney } from "@/lib/commerce"
 import {
@@ -44,10 +64,13 @@ const dotColors: Record<CalendarEventType, string> = {
 export function CalendarOverview() {
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState(() => new Date())
+  const [selectedEvent, setSelectedEvent] = useState<DashboardCalendarEvent | null>(null)
+  const [editingEvent, setEditingEvent] = useState<DashboardCalendarEvent | null>(null)
+  const [editorOpen, setEditorOpen] = useState(false)
   const gridStart = startOfWeek(startOfMonth(visibleMonth))
   const gridEnd = endOfWeek(endOfMonth(visibleMonth))
   const query = `/api/backoffice/calendar-events?start=${format(gridStart, "yyyy-MM-dd")}&end=${format(gridEnd, "yyyy-MM-dd")}`
-  const { data: response, error, isLoading } = useSWR<
+  const { data: response, error, isLoading, mutate } = useSWR<
     CollectionResponse<DashboardCalendarEvent>
   >(
     query,
@@ -75,6 +98,25 @@ export function CalendarOverview() {
     setSelectedDate(nextMonth)
   }
 
+  function openCreate() {
+    setEditingEvent(null)
+    setEditorOpen(true)
+  }
+
+  function openEdit(event: DashboardCalendarEvent) {
+    setSelectedEvent(null)
+    setEditingEvent(event)
+    setEditorOpen(true)
+  }
+
+  async function handleSaved(event: DashboardCalendarEvent) {
+    const savedDate = new Date(`${event.event_date}T12:00:00`)
+    setSelectedDate(savedDate)
+    setVisibleMonth(startOfMonth(savedDate))
+    await mutate()
+    setSelectedEvent(event)
+  }
+
   return (
     <Card className="overflow-hidden border-[#4338FF]/10 shadow-[0_18px_55px_rgba(67,56,255,.07)]">
       <CardHeader className="flex flex-row items-center justify-between gap-4 border-b bg-gradient-to-r from-[#155EEF]/[.045] via-transparent to-[#D000B8]/[.035]">
@@ -87,7 +129,10 @@ export function CalendarOverview() {
             <p className="text-sm text-muted-foreground">Pagamentos, cobranças e prazos</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          <Button size="sm" onClick={openCreate} className="mr-1 shadow-sm">
+            <Plus className="mr-1.5 h-4 w-4" />Novo evento
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -209,7 +254,12 @@ export function CalendarOverview() {
             ) : (
               <div className="mt-4 space-y-3">
                 {selectedEvents.map((event) => (
-                  <article key={event.id} className="rounded-xl border bg-background p-3.5">
+                  <button
+                    type="button"
+                    key={event.id}
+                    onClick={() => setSelectedEvent(event)}
+                    className="block w-full rounded-xl border bg-background p-3.5 text-left transition hover:border-[#4338FF]/35 hover:shadow-[0_10px_28px_rgba(67,56,255,.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4338FF]"
+                  >
                     <div className="flex items-start gap-2">
                       <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", dotColors[event.event_type])} />
                       <div className="min-w-0">
@@ -223,13 +273,54 @@ export function CalendarOverview() {
                         ) : null}
                       </div>
                     </div>
-                  </article>
+                  </button>
                 ))}
               </div>
             )}
+            <Button variant="outline" size="sm" onClick={openCreate} className="mt-5 w-full border-dashed">
+              <Plus className="mr-1.5 h-4 w-4" />Adicionar nesta data
+            </Button>
           </aside>
         </div>
       </CardContent>
+      <Dialog open={Boolean(selectedEvent)} onOpenChange={(open) => { if (!open) setSelectedEvent(null) }}>
+        <DialogContent className="omi-dashboard border-black/10 bg-white text-[#020617] sm:max-w-lg">
+          {selectedEvent ? (
+            <>
+              <DialogHeader>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge className={cn("border", eventColors[selectedEvent.event_type])}>{selectedEvent.event_type_label}</Badge>
+                  <Badge variant={selectedEvent.is_completed ? "default" : "secondary"}>
+                    {selectedEvent.is_completed ? "Concluído" : "Pendente"}
+                  </Badge>
+                </div>
+                <DialogTitle className={cn("text-xl", selectedEvent.is_completed && "line-through opacity-60")}>{selectedEvent.title}</DialogTitle>
+                <DialogDescription>{format(new Date(`${selectedEvent.event_date}T12:00:00`), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                {selectedEvent.description ? <p className="whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{selectedEvent.description}</p> : <p className="text-sm italic text-muted-foreground">Sem descrição.</p>}
+                <div className="grid gap-2 rounded-xl border bg-muted/20 p-4 text-sm">
+                  <div className="flex items-center gap-2">{selectedEvent.is_completed ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Circle className="h-4 w-4 text-amber-500" />}<span>{selectedEvent.is_completed ? "Atividade concluída" : "Atividade pendente"}</span></div>
+                  {selectedEvent.customer_name ? <div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-muted-foreground" /><span>{selectedEvent.customer_name}</span></div> : null}
+                  {selectedEvent.related_label ? <div className="flex items-center gap-2"><WalletCards className="h-4 w-4 text-muted-foreground" /><span>{selectedEvent.related_label}{selectedEvent.amount !== null ? ` · ${formatMoney(selectedEvent.amount)}` : ""}</span></div> : null}
+                  {selectedEvent.created_by_name ? <p className="pt-1 text-xs text-muted-foreground">Criado por {selectedEvent.created_by_name}</p> : null}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setSelectedEvent(null)}>Fechar</Button>
+                <Button type="button" onClick={() => openEdit(selectedEvent)}><Pencil className="mr-2 h-4 w-4" />Editar evento</Button>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
+      <CalendarEventDialog
+        open={editorOpen}
+        event={editingEvent}
+        defaultDate={format(selectedDate, "yyyy-MM-dd")}
+        onOpenChange={setEditorOpen}
+        onSaved={handleSaved}
+      />
     </Card>
   )
 }

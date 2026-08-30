@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, Suspense, useState } from "react"
 import { Canvas } from "@react-three/fiber"
-import { Environment, Float, OrbitControls } from "@react-three/drei"
+import { Float, OrbitControls } from "@react-three/drei"
 import { ArrowUpRight, ChevronDown, MessageCircle, Send } from "lucide-react"
 import OmiModel from "./omi-model"
 
@@ -54,9 +54,11 @@ function HeroModelStage() {
       dpr={[1, 2]}
       gl={{ alpha: true, antialias: true, failIfMajorPerformanceCaveat: false, powerPreference: "default" }}
     >
-      <ambientLight intensity={1.4} />
-      <directionalLight position={[3, 4, 5]} intensity={2.2} />
-      <pointLight position={[-4, -2, 3]} intensity={1.5} />
+      <ambientLight intensity={0.9} />
+      <hemisphereLight color="#dbeafe" groundColor="#17062d" intensity={1.25} />
+      <directionalLight color="#f8fafc" position={[3, 4, 5]} intensity={2.4} />
+      <pointLight color="#67e8f9" position={[-4, 1, 3]} intensity={2.2} distance={12} />
+      <pointLight color="#c084fc" position={[4, -2, 2]} intensity={1.8} distance={10} />
 
       <Float speed={1.1} rotationIntensity={0.18} floatIntensity={0.45}>
         <Suspense fallback={null}>
@@ -64,7 +66,6 @@ function HeroModelStage() {
         </Suspense>
       </Float>
 
-      <Environment preset="city" environmentIntensity={0.7} />
       <OrbitControls enableZoom={false} enablePan={false} target={[0, 0, 0]} />
     </Canvas>
   )

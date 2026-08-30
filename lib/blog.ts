@@ -14,6 +14,7 @@ export type BlogPost = {
   category: BlogCategory | null
   author_name: string
   reading_time: number
+  view_count: number
   published_at: string
   seo_title: string
   seo_description: string
