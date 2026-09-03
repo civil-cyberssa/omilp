@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { createElement } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { CheckoutForm, checkoutSchema, formatCreditCardNumber, PaymentResult } from "@/components/checkout-form"
+import { CheckoutForm, checkoutSchema, formatCreditCardNumber, normalizeBrazilianPhone, PaymentResult } from "@/components/checkout-form"
 
 const replace = vi.fn()
 
@@ -26,6 +26,17 @@ describe("formatCreditCardNumber", () => {
     expect(formatCreditCardNumber("4111-1111 1111.1111abc99999")).toBe(
       "4111 1111 1111 1111 999",
     )
+  })
+})
+
+describe("normalizeBrazilianPhone", () => {
+  it("remove o código do Brasil de números preenchidos automaticamente", () => {
+    expect(normalizeBrazilianPhone("+55 (71) 99999-9999")).toBe("71999999999")
+    expect(normalizeBrazilianPhone("5571999999999")).toBe("71999999999")
+  })
+
+  it("mantém números nacionais que já estão sem o código do país", () => {
+    expect(normalizeBrazilianPhone("(55) 99999-9999")).toBe("55999999999")
   })
 })
 
@@ -57,6 +68,27 @@ describe("checkoutSchema", () => {
 })
 
 describe("CheckoutForm", () => {
+  it("normaliza telefone e consulta endereço quando os campos recebem autofill", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({
+      postal_code: "40020000", street: "Rua Chile", address_complement: "",
+      neighborhood: "Centro", city: "Salvador", city_code: "2927408", state: "BA", country: "BR",
+    }))
+
+    render(createElement(CheckoutForm, { offer: { slug: "assinatura", cycle: "MONTHLY", price: "100.00" } }))
+
+    const phone = screen.getByLabelText("Telefone") as HTMLInputElement
+    fireEvent.input(phone, { target: { value: "+55 (71) 99999-9999" } })
+    expect(phone.value).toBe("71999999999")
+
+    fireEvent.input(screen.getByLabelText("CEP"), { target: { value: "40020-000" } })
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/postal-code/40020000"))
+    await waitFor(() => expect(screen.getByLabelText("Rua")).toHaveValue("Rua Chile"))
+    expect(screen.getByLabelText("Bairro")).toHaveValue("Centro")
+    expect(screen.getByLabelText("Cidade")).toHaveValue("Salvador")
+    expect(screen.getByLabelText("Estado")).toHaveValue("BA")
+  })
+
   it("envia o formulário de cartão válido para a rota interna de checkout", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
       if (String(input).startsWith("/api/postal-code/")) {
@@ -102,25 +134,32 @@ describe("CheckoutForm", () => {
     expect(payload.billing_type).toBe("CREDIT_CARD")
     expect(payload.credit_card.number).toBe("4444 4444 4444 4444")
     expect(payload.offer).toBe("plano-anual")
+    const idempotencyKey = new Headers(request.headers).get("Idempotency-Key")
+    expect(idempotencyKey).toMatch(/^[0-9a-f-]{36}$/)
   })
 })
 
 describe("PaymentResult", () => {
   it("consulta o status a cada 3 segundos e abre o briefing após confirmação", async () => {
     vi.useFakeTimers()
-    const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(new Response(JSON.stringify({
+    let statusCalls = 0
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      if (input === "/api/analytics/events") {
+        return Response.json({ accepted: true })
+      }
+      statusCalls += 1
+      return Response.json(statusCalls === 1 ? {
         resource_type: "order",
         status: "PENDING_PAYMENT",
         payment_status: "PENDING",
         confirmed: false,
-      }), { status: 200, headers: { "Content-Type": "application/json" } }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
+      } : {
         resource_type: "order",
         status: "PAID",
         payment_status: "RECEIVED",
         confirmed: true,
-      }), { status: 200, headers: { "Content-Type": "application/json" } }))
+      })
+    })
 
     render(createElement(PaymentResult, { result: {
       resource_type: "order",
@@ -132,12 +171,15 @@ describe("PaymentResult", () => {
 
     expect(screen.queryByRole("link", { name: /briefing/i })).toBeNull()
     await act(async () => vi.advanceTimersByTimeAsync(3000))
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(statusCalls).toBe(1)
     expect(screen.queryByRole("link", { name: /briefing/i })).toBeNull()
 
     await act(async () => vi.advanceTimersByTimeAsync(3000))
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(statusCalls).toBe(2)
     expect(replace).toHaveBeenCalledWith("/briefing")
     expect(screen.getByRole("link", { name: /briefing/i })).toBeInTheDocument()
+    expect(fetchMock).toHaveBeenCalledWith("/api/analytics/events", expect.objectContaining({
+      method: "POST",
+    }))
   })
 })

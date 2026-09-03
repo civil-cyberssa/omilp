@@ -14,7 +14,14 @@ export async function POST(request: NextRequest) {
     }
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || request.headers.get("x-real-ip")?.trim()
+    const idempotencyKey = request.headers.get("idempotency-key")?.trim() ?? ""
+    if (idempotencyKey.length < 16 || idempotencyKey.length > 128 || /\s/.test(idempotencyKey)) {
+      return apiError(400, "INVALID_IDEMPOTENCY_KEY", {
+        message: "Informe um Idempotency-Key válido de 16 a 128 caracteres.",
+      })
+    }
     const headers = new Headers({ "Content-Type": "application/json" })
+    headers.set("Idempotency-Key", idempotencyKey)
     if (clientIp) {
       headers.set("X-Checkout-Client-IP", clientIp)
       headers.set("X-Checkout-Internal-Key", process.env.CHECKOUT_CLIENT_IP_KEY ?? "")

@@ -1,15 +1,21 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { usePathname, useSearchParams } from "next/navigation"
+import { useEffect } from "react"
 
 import { trackAnalyticsEvent } from "@/lib/analytics"
+import { initializeMetaPixel } from "@/lib/meta-pixel"
 
 export default function AnalyticsTracker() {
-  const [eventId] = useState(() => crypto.randomUUID())
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const query = searchParams.toString()
 
   useEffect(() => {
-    void trackAnalyticsEvent("page_view", { page: "home" }, eventId)
-  }, [eventId])
+    if (["/dashboard", "/area-cliente", "/briefing"].some((prefix) => pathname.startsWith(prefix))) return
+    initializeMetaPixel()
+    void trackAnalyticsEvent("page_view", { page: pathname })
+  }, [pathname, query])
 
   return null
 }

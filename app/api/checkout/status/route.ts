@@ -8,14 +8,13 @@ export async function GET(request: NextRequest) {
   return withRouteErrorHandling("GET /api/checkout/status", async () => {
     const purchaseToken = request.cookies.get(PURCHASE_COOKIE)?.value
     if (!purchaseToken) {
-      return apiError(401, "PURCHASE_SESSION_MISSING", {
-        message: "A sessão desta compra não foi encontrada.",
+      return apiError(404, "PURCHASE_NOT_FOUND", {
+        message: "Compra não encontrada.",
       })
     }
 
     const response = await fetch(backendEndpoint("/api/v1/checkout/status/"), {
       headers: {
-        "X-Checkout-Internal-Key": process.env.CHECKOUT_INTERNAL_KEY ?? "",
         "X-Purchase-Token": purchaseToken,
       },
       cache: "no-store",

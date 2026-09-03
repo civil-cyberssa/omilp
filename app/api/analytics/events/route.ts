@@ -30,12 +30,16 @@ export async function POST(request: NextRequest) {
   const currentSession = request.cookies.get(SESSION_COOKIE)?.value
   const visitorId = currentVisitor && UUID_PATTERN.test(currentVisitor) ? currentVisitor : randomUUID()
   const sessionId = currentSession && UUID_PATTERN.test(currentSession) ? currentSession : randomUUID()
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || request.headers.get("x-real-ip")?.trim()
+    || ""
   const backendResponse = await fetch(backendEndpoint("/api/v1/analytics/events/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "X-Analytics-Key": process.env.ANALYTICS_INGESTION_KEY ?? "unsafe-development-analytics-key",
       "User-Agent": request.headers.get("user-agent") ?? "",
+      "X-Analytics-Client-IP": clientIp,
     },
     body: JSON.stringify({ ...body, visitor_id: visitorId, session_id: sessionId }),
     cache: "no-store",

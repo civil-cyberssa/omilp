@@ -12,6 +12,9 @@ export async function POST(request: NextRequest) {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(await request.json()), cache: "no-store",
     })
+    if (backend.status === 429) {
+      return apiError(429, "PORTAL_ACCESS_RATE_LIMITED", { message: "Não foi possível validar este link agora. Solicite um novo link de acesso." })
+    }
     const parsed = await readUpstreamJson<{ session?: string }>(backend)
     if (parsed.error) return parsed.error
     if (!parsed.data.session) return apiError(502, "INVALID_UPSTREAM_RESPONSE", { message: "O backend não retornou uma sessão válida." })

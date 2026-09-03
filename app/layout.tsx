@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Script from 'next/script'
+import { Suspense } from 'react'
 import './globals.css'
+import AnalyticsTracker from '@/components/analytics-tracker'
 import WhatsappButton from '@/components/whatsapp-button'
 import { Toaster } from '@/components/ui/sonner'
 
@@ -258,6 +260,9 @@ export default function RootLayout({
   return (
     <html lang="pt">
       <body>
+        <Suspense fallback={null}>
+          <AnalyticsTracker />
+        </Suspense>
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-RKLNFK03PK"
           strategy="afterInteractive"

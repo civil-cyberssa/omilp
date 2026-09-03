@@ -8,13 +8,11 @@ import DigitalLensSection from "@/components/digital-lens-section"
 import ClientsSection from "@/components/clients-section"
 import ContactForm from "@/components/contact-form"
 import Footer from "@/components/footer"
-import AnalyticsTracker from "@/components/analytics-tracker"
 import OffersSection from "@/components/offers-section"
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white overflow-hidden">
-      <AnalyticsTracker />
       <Navbar />
       <HeroSection />
       <SoftwareGrid id="products" />

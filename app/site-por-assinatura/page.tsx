@@ -11,7 +11,6 @@ import {
   Sparkles,
 } from "lucide-react"
 
-import AnalyticsTracker from "@/components/analytics-tracker"
 import Footer from "@/components/footer"
 import Navbar from "@/components/navbar"
 import { OfferPrice } from "@/components/offer-price"
@@ -150,7 +149,6 @@ export default async function SitePorAssinaturaPage() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f7f8fb] text-[#0a1021]">
-      <AnalyticsTracker />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }} />
       <Navbar />
 

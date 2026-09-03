@@ -5,7 +5,7 @@ import { ArrowRight, CheckCircle2, Copy, CreditCard, Loader2, LockKeyhole, MapPi
 import Image from "next/image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Controller, type FieldErrors, type FieldPath, type UseFormReturn, useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { z } from "zod"
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatApiError } from "@/lib/client-api-error"
 import { formatMoney } from "@/lib/commerce"
+import { trackAnalyticsEvent } from "@/lib/analytics"
 
 const personSchema = z.object({
   name: z.string().min(3, "Informe o nome completo"),
@@ -72,6 +73,9 @@ type CheckoutResult = {
   subscription_id?: string
   installment_count?: number
   pix?: { encoded_image: string; payload: string; expiration_date?: string | null }
+  value?: number
+  currency?: string
+  content_id?: string
 }
 type CheckoutStatus = {
   resource_type: "order" | "subscription"
@@ -85,6 +89,11 @@ const inputClass = "h-12 border-white/15 bg-white/[.04] text-white placeholder:t
 export function formatCreditCardNumber(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 19)
   return digits.match(/.{1,4}/g)?.join(" ") ?? ""
+}
+
+export function normalizeBrazilianPhone(value: string) {
+  const digits = value.replace(/\D/g, "")
+  return digits.startsWith("55") && digits.length > 11 ? digits.slice(2) : digits
 }
 
 function caretPositionForDigits(value: string, digitCount: number) {
@@ -119,8 +128,8 @@ function firstValidationMessage(errors: FieldErrors<Values>) {
   return candidates.find((message): message is string => typeof message === "string")
 }
 
-function AddressFields({ prefix, form, loading, lookup }: { prefix: PersonPrefix; form: UseFormReturn<Values>; loading: boolean; lookup: (prefix: PersonPrefix) => Promise<void> }) {
-  const { register, formState: { errors } } = form
+function AddressFields({ prefix, form, loading, lookup }: { prefix: PersonPrefix; form: UseFormReturn<Values>; loading: boolean; lookup: (prefix: PersonPrefix, value?: string) => Promise<void> }) {
+  const { register, setValue, formState: { errors } } = form
   const names = prefix === "customer" ? {
     postal: "customer.postal_code" as const, street: "customer.street" as const, number: "customer.address_number" as const,
     complement: "customer.address_complement" as const, neighborhood: "customer.neighborhood" as const, city: "customer.city" as const,
@@ -133,10 +142,16 @@ function AddressFields({ prefix, form, loading, lookup }: { prefix: PersonPrefix
   const fieldErrors = (prefix === "customer" ? errors.customer : errors.cardholder) as FieldErrors<z.infer<typeof personSchema>> | undefined
   const postalRegistration = register(names.postal)
 
+  function handlePostalInput(event: React.FormEvent<HTMLInputElement>) {
+    const value = event.currentTarget.value
+    setValue(names.postal, value, { shouldDirty: true, shouldValidate: value.replace(/\D/g, "").length === 8 })
+    void lookup(prefix, value)
+  }
+
   return <div className="space-y-4 rounded-xl border border-white/10 bg-white/[.025] p-4 md:p-5">
     <div className="flex items-center gap-2 text-sm font-medium text-white/80"><MapPin className="h-4 w-4 text-[#8EA8FF]" />Endereço de cobrança</div>
     <div className="grid gap-4 md:grid-cols-[.75fr_1.25fr]">
-      <div className="space-y-2"><Label htmlFor={names.postal}>CEP</Label><div className="relative"><Input id={names.postal} inputMode="numeric" placeholder="00000-000" className={inputClass} {...postalRegistration} onBlur={(event) => { postalRegistration.onBlur(event); void lookup(prefix) }} />{loading ? <Loader2 className="absolute right-3 top-4 h-4 w-4 animate-spin text-[#8EA8FF]" /> : null}</div><Message>{fieldErrors?.postal_code?.message}</Message></div>
+      <div className="space-y-2"><Label htmlFor={names.postal}>CEP</Label><div className="relative"><Input id={names.postal} autoComplete="postal-code" inputMode="numeric" placeholder="00000-000" className={inputClass} {...postalRegistration} onInput={handlePostalInput} onAnimationStart={(event) => { if (event.animationName === "omi-autofill-start") handlePostalInput(event) }} onBlur={(event) => { postalRegistration.onBlur(event); void lookup(prefix, event.currentTarget.value) }} />{loading ? <Loader2 className="absolute right-3 top-4 h-4 w-4 animate-spin text-[#8EA8FF]" /> : null}</div><Message>{fieldErrors?.postal_code?.message}</Message></div>
       <div className="space-y-2"><Label htmlFor={names.street}>Rua</Label><Input id={names.street} autoComplete="address-line1" placeholder="Rua, avenida..." className={inputClass} {...register(names.street)} /><Message>{fieldErrors?.street?.message}</Message></div>
     </div>
     <div className="grid gap-4 md:grid-cols-[.55fr_1.45fr]">
@@ -159,6 +174,7 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
   const [confirmed, setConfirmed] = useState(false)
   const [terminal, setTerminal] = useState(false)
   const [statusMessage, setStatusMessage] = useState("Aguardando confirmação do pagamento")
+  const purchaseTracked = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -171,6 +187,15 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
           const data = await response.json() as CheckoutStatus
           if (!active) return
           if (data.confirmed) {
+            if (!purchaseTracked.current) {
+              purchaseTracked.current = true
+              void trackAnalyticsEvent("purchase", {
+                value: result.value ?? 0,
+                currency: result.currency ?? "BRL",
+                content_ids: result.content_id ? [result.content_id] : [],
+                content_type: "product",
+              })
+            }
             setConfirmed(true)
             setStatusMessage("Pagamento confirmado")
             router.replace("/briefing")
@@ -197,7 +222,7 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
       active = false
       if (timer) clearTimeout(timer)
     }
-  }, [router])
+  }, [result.content_id, result.currency, result.value, router])
 
   async function copyPix() {
     if (!result.pix?.payload) return
@@ -233,6 +258,8 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
   const [loadingPostal, setLoadingPostal] = useState<PersonPrefix | null>(null)
   const [result, setResult] = useState<CheckoutResult | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const idempotencyKey = useRef<string | null>(null)
+  const postalLookups = useRef<Record<PersonPrefix, string | null>>({ customer: null, cardholder: null })
   const maximumInstallments = offer.cycle === "YEARLY" ? 12 : offer.cycle === "SEMIANNUALLY" ? 6 : 1
 
   useEffect(() => {
@@ -246,25 +273,63 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
     }
   }, [billingType, sameCardholder, setValue, unregister])
 
-  async function lookupPostalCode(prefix: PersonPrefix) {
-    const postalCode = String(getValues(`${prefix}.postal_code` as FieldPath<Values>) ?? "").replace(/\D/g, "")
-    if (postalCode.length !== 8) return
+  async function lookupPostalCode(prefix: PersonPrefix, value?: string) {
+    const postalCode = String(value ?? getValues(`${prefix}.postal_code` as FieldPath<Values>) ?? "").replace(/\D/g, "")
+    if (postalCode.length !== 8) {
+      postalLookups.current[prefix] = null
+      return
+    }
+    if (postalLookups.current[prefix] === postalCode) return
+    postalLookups.current[prefix] = postalCode
     setLoadingPostal(prefix)
     try {
       const response = await fetch(`/api/postal-code/${postalCode}`)
       const data = await response.json() as AddressData | { error?: unknown }
       if (!response.ok || !("city_code" in data)) throw new Error()
+      const currentPostalCode = String(getValues(`${prefix}.postal_code` as FieldPath<Values>) ?? "").replace(/\D/g, "")
+      if (currentPostalCode !== postalCode) return
       for (const [field, value] of Object.entries(data as AddressData)) setValue(`${prefix}.${field}` as FieldPath<Values>, value, { shouldValidate: true })
     } catch {
+      const currentPostalCode = String(getValues(`${prefix}.postal_code` as FieldPath<Values>) ?? "").replace(/\D/g, "")
+      if (currentPostalCode !== postalCode) return
+      postalLookups.current[prefix] = null
       setValue(`${prefix}.city_code` as FieldPath<Values>, "", { shouldValidate: true })
       toast.error("Não foi possível consultar esse CEP. Confira e tente novamente.")
-    } finally { setLoadingPostal(null) }
+    } finally { setLoadingPostal((current) => current === prefix ? null : current) }
+  }
+
+  function phoneField(name: "customer.phone" | "cardholder.phone") {
+    const registration = register(name)
+    const normalize = (event: React.FormEvent<HTMLInputElement>) => {
+      const normalized = normalizeBrazilianPhone(event.currentTarget.value)
+      event.currentTarget.value = normalized
+      setValue(name, normalized, { shouldDirty: true, shouldValidate: normalized.length >= 10 })
+    }
+    return {
+      ...registration,
+      onInput: normalize,
+      onAnimationStart: (event: React.AnimationEvent<HTMLInputElement>) => {
+        if (event.animationName === "omi-autofill-start") normalize(event)
+      },
+      onBlur: (event: React.FocusEvent<HTMLInputElement>) => {
+        normalize(event)
+        registration.onBlur(event)
+      },
+    }
   }
 
   async function submit(values: Values) {
     setSubmitError(null)
     try {
-      const response = await fetch("/api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...values, offer: offer.slug }) })
+      idempotencyKey.current ??= crypto.randomUUID()
+      const response = await fetch("/api/checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Idempotency-Key": idempotencyKey.current,
+        },
+        body: JSON.stringify({ ...values, offer: offer.slug }),
+      })
       const data = await response.json().catch(() => ({ error: { status: response.status, code: "INVALID_RESPONSE", details: { message: "A rota retornou uma resposta inválida." } } }))
       if (!response.ok) {
         const message = formatApiError(response.status, data)
@@ -277,7 +342,18 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
         return void toast.error(message)
       }
       resetField("credit_card")
-      setResult(data as CheckoutResult)
+      void trackAnalyticsEvent("initiate_checkout", {
+        value: Number(offer.price),
+        currency: "BRL",
+        content_ids: [offer.slug],
+        content_type: "product",
+      })
+      setResult({
+        ...(data as CheckoutResult),
+        value: Number(offer.price),
+        currency: "BRL",
+        content_id: offer.slug,
+      })
     } catch {
       const message = "Erro de conexão: não foi possível processar o pagamento. Não tente novamente antes de conferir seu pedido."
       setSubmitError(message)
@@ -300,7 +376,7 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
     <div className="grid gap-4 md:grid-cols-2">
       <div className="space-y-2"><Label htmlFor="customer.name">Nome completo</Label><Input id="customer.name" autoComplete="name" placeholder="Como devemos chamar você?" className={inputClass} {...register("customer.name")} /><Message>{errors.customer?.name?.message}</Message></div>
       <div className="space-y-2"><Label htmlFor="customer.email">E-mail</Label><Input id="customer.email" autoComplete="email" type="email" placeholder="voce@empresa.com" className={inputClass} {...register("customer.email")} /><Message>{errors.customer?.email?.message}</Message></div>
-      <div className="space-y-2"><Label htmlFor="customer.phone">Telefone</Label><Input id="customer.phone" autoComplete="tel" type="tel" placeholder="(71) 99999-9999" className={inputClass} {...register("customer.phone")} /><Message>{errors.customer?.phone?.message}</Message></div>
+      <div className="space-y-2"><Label htmlFor="customer.phone">Telefone</Label><Input id="customer.phone" autoComplete="tel-national" type="tel" inputMode="tel" placeholder="(71) 99999-9999" className={inputClass} {...phoneField("customer.phone")} /><Message>{errors.customer?.phone?.message}</Message></div>
       <div className="space-y-2"><Label htmlFor="customer.cpf_cnpj">CPF ou CNPJ</Label><Input id="customer.cpf_cnpj" inputMode="numeric" placeholder="Somente números ou formatado" className={inputClass} {...register("customer.cpf_cnpj")} /><Message>{errors.customer?.cpf_cnpj?.message}</Message></div>
       <div className="space-y-2 md:col-span-2"><Label htmlFor="customer.company">Empresa (opcional)</Label><Input id="customer.company" autoComplete="organization" placeholder="Nome da sua empresa" className={inputClass} {...register("customer.company")} /></div>
     </div>
@@ -326,7 +402,7 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2"><Label htmlFor="cardholder.name">Nome completo</Label><Input id="cardholder.name" className={inputClass} {...register("cardholder.name")} /><Message>{errors.cardholder?.name?.message}</Message></div>
           <div className="space-y-2"><Label htmlFor="cardholder.email">E-mail</Label><Input id="cardholder.email" type="email" className={inputClass} {...register("cardholder.email")} /><Message>{errors.cardholder?.email?.message}</Message></div>
-          <div className="space-y-2"><Label htmlFor="cardholder.phone">Telefone</Label><Input id="cardholder.phone" type="tel" className={inputClass} {...register("cardholder.phone")} /><Message>{errors.cardholder?.phone?.message}</Message></div>
+          <div className="space-y-2"><Label htmlFor="cardholder.phone">Telefone</Label><Input id="cardholder.phone" autoComplete="tel-national" type="tel" inputMode="tel" className={inputClass} {...phoneField("cardholder.phone")} /><Message>{errors.cardholder?.phone?.message}</Message></div>
           <div className="space-y-2"><Label htmlFor="cardholder.cpf_cnpj">CPF ou CNPJ</Label><Input id="cardholder.cpf_cnpj" inputMode="numeric" className={inputClass} {...register("cardholder.cpf_cnpj")} /><Message>{errors.cardholder?.cpf_cnpj?.message}</Message></div>
         </div>
         <AddressFields prefix="cardholder" form={form} loading={loadingPostal === "cardholder"} lookup={lookupPostalCode} />
