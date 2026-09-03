@@ -14,7 +14,12 @@ export default async function OffersSection() {
         <p className="text-xs font-semibold uppercase tracking-[.28em] text-[#8EA8FF]">Sites por assinatura</p>
         <div className="mt-4 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <h2 className="max-w-2xl text-4xl font-semibold tracking-[-.04em] md:text-6xl">Escolha o ponto de partida.</h2>
-          {/* <p className="max-w-md leading-7 text-white/55">Contrate online, conclua o pagamento no Asaas e envie o briefing do seu projeto.</p> */}
+          <div className="max-w-md leading-7 text-white/60">
+            <p>Tenha um site profissional, responsivo e acompanhado por suporte contínuo em um plano recorrente.</p>
+            <Link href="/site-por-assinatura" className="mt-3 inline-flex text-sm font-semibold text-[#AFC1FF] underline decoration-white/20 underline-offset-4 transition hover:text-white">
+              Entenda como funciona o site por assinatura
+            </Link>
+          </div>
         </div>
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
           {offers.map((offer) => (

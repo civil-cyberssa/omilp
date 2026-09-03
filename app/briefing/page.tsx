@@ -1,4 +1,12 @@
+import type { Metadata } from "next"
+
 import Footer from "@/components/footer"
 import Navbar from "@/components/navbar"
 import { BriefingForm } from "@/components/briefing-form"
+
+export const metadata: Metadata = {
+  title: "Briefing do projeto",
+  robots: { index: false, follow: false },
+}
+
 export default function BriefingPage() { return <main className="min-h-screen bg-[linear-gradient(135deg,#020617,#07143D_58%,#17062D)] text-white"><Navbar /><section className="container mx-auto max-w-4xl px-6 pb-24 pt-36"><p className="text-xs font-semibold uppercase tracking-[.25em] text-[#8EA8FF]">Próxima etapa</p><h1 className="mt-4 text-4xl font-semibold tracking-[-.04em] md:text-6xl">Conte o que vamos construir.</h1><p className="mb-10 mt-5 max-w-2xl leading-7 text-white/55">Você pode enviar agora mesmo. O status do pagamento será confirmado pelo Asaas separadamente.</p><div className="border border-white/12 bg-white/[.025] p-6 md:p-9"><BriefingForm /></div></section><Footer /></main> }

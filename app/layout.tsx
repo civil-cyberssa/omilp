@@ -81,9 +81,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-  alternates: {
-    canonical: '/',
-  },
   category: 'technology',
   robots: {
     index: true,
@@ -104,21 +101,12 @@ export const metadata: Metadata = {
     siteName: 'Omi Tecnologia',
     locale: 'pt_BR',
     type: 'website',
-    images: [
-      {
-        url: '/Logo Omi_Perfil Logo Branca 2.png',
-        width: 128,
-        height: 64,
-        alt: 'Omi Tecnologia - software, landing pages e sites profissionais',
-      },
-    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Omi Tecnologia | Software e Sites Profissionais',
     description:
       'Software sob medida, landing pages, sites profissionais e automações para empresas em Salvador, São Paulo e Brasil.',
-    images: ['/Logo Omi_Perfil Logo Branca 2.png'],
   },
 }
 
@@ -258,7 +246,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="pt">
+    <html lang="pt-BR">
       <body>
         <Suspense fallback={null}>
           <AnalyticsTracker />
