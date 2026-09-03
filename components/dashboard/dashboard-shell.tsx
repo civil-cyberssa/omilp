@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import useSWR from "swr"
-import { BarChart3, CreditCard, FileText, Files, Gauge, Inbox, Layers3, LogOut, Menu, PanelLeftClose, RefreshCw } from "lucide-react"
+import { BarChart3, BriefcaseBusiness, CreditCard, FileText, Files, Gauge, Inbox, Layers3, LogOut, Menu, PanelLeftClose, RefreshCw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
@@ -21,6 +21,7 @@ const navigation = [
   { label: "Documentos", href: "/dashboard/documentos", icon: Files },
   { label: "Pedidos", href: "/dashboard/pedidos", icon: CreditCard },
   { label: "Assinaturas", href: "/dashboard/assinaturas", icon: RefreshCw },
+  { label: "Projetos", href: "/dashboard/projetos", icon: BriefcaseBusiness },
   { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
 ]
 

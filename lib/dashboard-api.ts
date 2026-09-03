@@ -71,16 +71,52 @@ export type AuthUser = {
 export type DashboardOffer = {
   id: string; name: string; slug: string; short_description: string; description: string
   kind: "SUBSCRIPTION" | "ONE_TIME"; price: string; cycle: string; features: string[]
-  is_featured: boolean; is_active: boolean; sort_order: number; created_at: string; updated_at: string
+  is_featured: boolean; is_active: boolean; sort_order: number; monthly_change_request_limit: number; created_at: string; updated_at: string
 }
 export type BillingCustomer = { id: string; name: string; email: string; phone: string; company: string; cpf_cnpj: string }
 export type DashboardOrder = {
   id: string; customer: BillingCustomer; offer: DashboardOffer; status: string; billing_type: string
-  total: string; due_date: string; notes: string; checkout_url: string; created_at: string; updated_at: string
+  total: string; due_date: string; notes: string; checkout_url: string; monthly_change_request_limit: number; created_at: string; updated_at: string
 }
 export type DashboardSubscription = {
   id: string; customer: BillingCustomer; offer: DashboardOffer; status: string; billing_type: string
-  value: string; cycle: string; next_due_date: string; checkout_url: string; created_at: string; updated_at: string
+  value: string; cycle: string; next_due_date: string; checkout_url: string; monthly_change_request_limit: number; created_at: string; updated_at: string
+}
+
+export type DashboardProject = {
+  id: string
+  site: string
+  repository_url: string
+  hosting_provider: "VERCEL" | "AWS"
+  domain_access_url: string
+  domain_access_username: string
+  domain_access_password: string
+  notes: string
+  order: string | null
+  subscription: string | null
+  customer: BillingCustomer
+  offer_name: string
+  source_type: "order" | "subscription"
+  source_id: string
+  monthly_change_request_limit: number
+  change_requests_used: number
+  change_requests_remaining: number
+  created_at: string
+  updated_at: string
+}
+
+export type ChangeRequestStatus = "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELED"
+export type DashboardChangeRequest = {
+  id: string
+  project: string
+  project_site: string
+  customer_name: string
+  title: string
+  description: string
+  status: ChangeRequestStatus
+  staff_notes: string
+  created_at: string
+  updated_at: string
 }
 
 export type DocumentType = "INVOICE" | "CONTRACT" | "DOCUMENT" | "QUOTE" | "OTHER"

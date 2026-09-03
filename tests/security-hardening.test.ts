@@ -107,6 +107,7 @@ describe("hardening do frontend", () => {
     )
 
     expect(headers.get("Content-Security-Policy")).toContain("object-src 'none'")
+    expect(headers.get("Content-Security-Policy")).toContain("frame-src https:")
     expect(headers.get("Content-Security-Policy")).toContain("frame-ancestors 'none'")
     expect(headers.get("X-Content-Type-Options")).toBe("nosniff")
     expect(headers.get("X-Frame-Options")).toBe("DENY")

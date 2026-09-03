@@ -24,7 +24,28 @@ export type PortalBriefing = {
   subscription: string | null
   order: string | null
 }
-export type PortalData = { customer: PortalCustomer; orders: PortalOrder[]; subscriptions: PortalSubscription[]; briefings: PortalBriefing[] }
+export type PortalChangeRequest = {
+  id: string
+  title: string
+  description: string
+  status: "PENDING" | "IN_PROGRESS" | "COMPLETED" | "CANCELED"
+  created_at: string
+  updated_at: string
+}
+export type PortalProject = {
+  id: string
+  site: string
+  offer_name: string
+  source_type: "order" | "subscription"
+  source_id: string
+  monthly_change_request_limit: number
+  change_requests_used: number
+  change_requests_remaining: number
+  change_requests: PortalChangeRequest[]
+  created_at: string
+  updated_at: string
+}
+export type PortalData = { customer: PortalCustomer; orders: PortalOrder[]; subscriptions: PortalSubscription[]; briefings: PortalBriefing[]; projects: PortalProject[] }
 
 export class PortalRequestError extends Error {
   constructor(public status: number, message: string) {
@@ -50,7 +71,7 @@ export function apiErrorMessage(payload: unknown, fallback: string) {
   return fallback
 }
 
-export const portalFetcher = async (url: string) => {
+export const portalFetcher = async <T = PortalData>(url: string): Promise<T> => {
   const response = await fetch(url, { cache: "no-store" })
   const payload: unknown = await response.json().catch(() => null)
   if (!response.ok) {
@@ -59,5 +80,5 @@ export const portalFetcher = async (url: string) => {
       apiErrorMessage(payload, "Não foi possível consultar sua área."),
     )
   }
-  return payload as PortalData
+  return payload as T
 }
