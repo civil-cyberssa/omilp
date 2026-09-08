@@ -46,7 +46,7 @@ export type DashboardSummary = {
 }
 
 export type AnalyticsSummary = {
-  period_days: 7 | 30 | 90
+  period_days: 1 | 7 | 30 | 90
   totals: {
     views: number
     visitors: number
@@ -56,8 +56,17 @@ export type AnalyticsSummary = {
     conversion_rate: number
   }
   daily: Array<{ date: string; views: number; conversions: number }>
+  hourly: Array<{ weekday: number; hour: number; views: number }>
   sources: Array<{ label: string; views: number; visitors: number }>
   campaigns: Array<{ label: string; views: number; visitors: number }>
+}
+
+export type DashboardBillingOverview = {
+  orders: number
+  subscriptions: number
+  revenue: string
+  asaas_available_balance: string | null
+  asaas_balance_available: boolean
 }
 
 export type AuthUser = {
