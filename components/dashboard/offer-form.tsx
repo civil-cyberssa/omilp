@@ -28,11 +28,26 @@ function maskedPriceToCents(value: string) {
 }
 
 export function OfferForm({ offer, onSaved }: { offer?: DashboardOffer; onSaved?: (saved: DashboardOffer) => void | Promise<void> }) {
-  const router = useRouter(); const [saving, setSaving] = useState(false); const [error, setError] = useState("")
+  const router = useRouter(); const [saving, setSaving] = useState(false); const [deleting, setDeleting] = useState(false); const [error, setError] = useState("")
   const [kind, setKind] = useState(offer?.kind ?? "SUBSCRIPTION"); const [cycle, setCycle] = useState(offer?.cycle ?? "MONTHLY")
   const [active, setActive] = useState(offer?.is_active ?? true); const [featured, setFeatured] = useState(offer?.is_featured ?? false)
-  async function submit(formData: FormData) { setSaving(true); setError(""); const body = { name: formData.get("name"), slug: formData.get("slug"), short_description: formData.get("short_description"), description: formData.get("description"), price: formData.get("price"), sort_order: Number(formData.get("sort_order") || 0), monthly_change_request_limit: Number(formData.get("monthly_change_request_limit") || 0), features: String(formData.get("features") ?? "").split("\n").map(v => v.trim()).filter(Boolean), kind, cycle, is_active: active, is_featured: featured }; try { const saved = await dashboardMutation<DashboardOffer>(offer ? `/api/backoffice/offers/${offer.slug}` : "/api/backoffice/offers", { method: offer ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); await onSaved?.(saved); toast.success(offer ? "Oferta atualizada com sucesso." : "Oferta criada com sucesso."); router.replace(`/dashboard/ofertas/${saved.slug}/editar`); router.refresh() } catch (err) { const message = err instanceof Error ? err.message : "Não foi possível salvar"; setError(message); toast.error(offer ? "A oferta não foi atualizada." : "A oferta não foi criada.", { description: message }) } finally { setSaving(false) } }
-  async function remove() { if (!offer || !confirm("Excluir esta oferta?")) return; await dashboardMutation(`/api/backoffice/offers/${offer.slug}`, { method: "DELETE" }); router.replace("/dashboard/ofertas"); router.refresh() }
+  async function submit(formData: FormData) { setSaving(true); setError(""); const body = { name: formData.get("name"), slug: formData.get("slug"), short_description: formData.get("short_description"), description: formData.get("description"), price: formData.get("price"), sort_order: Number(formData.get("sort_order") || 0), monthly_change_request_limit: Number(formData.get("monthly_change_request_limit") || 0), features: String(formData.get("features") ?? "").split("\n").map(v => v.trim()).filter(Boolean), kind, cycle, is_active: active, is_featured: featured }; try { const saved = await dashboardMutation<DashboardOffer>(offer ? `/api/backoffice/offers/${offer.slug}` : "/api/backoffice/offers", { method: offer ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); await onSaved?.(saved); toast.success(offer ? "Oferta atualizada com sucesso." : "Oferta criada com sucesso."); router.replace(offer ? "/dashboard/ofertas" : `/dashboard/ofertas/${saved.slug}/editar`); router.refresh() } catch (err) { const message = err instanceof Error ? err.message : "Não foi possível salvar"; setError(message); toast.error(offer ? "A oferta não foi atualizada." : "A oferta não foi criada.", { description: message }) } finally { setSaving(false) } }
+  async function remove() {
+    if (!offer || !confirm("Excluir esta oferta?")) return
+    setDeleting(true); setError("")
+    try {
+      await dashboardMutation(`/api/backoffice/offers/${offer.slug}`, { method: "DELETE" })
+      toast.success("Oferta excluída com sucesso.")
+      router.replace("/dashboard/ofertas")
+      router.refresh()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Não foi possível excluir a oferta."
+      setError(message)
+      toast.error("A oferta não foi excluída.", { description: message })
+    } finally {
+      setDeleting(false)
+    }
+  }
   return <form action={submit} className="grid gap-6 rounded-xl border bg-card p-6 md:grid-cols-2">
     <Field name="name" label="Nome" defaultValue={offer?.name} required /><Field name="slug" label="Slug" defaultValue={offer?.slug} />
     <div className="space-y-2 md:col-span-2"><Label htmlFor="short_description">Resumo</Label><Input id="short_description" name="short_description" defaultValue={offer?.short_description} required /></div>
@@ -44,7 +59,7 @@ export function OfferForm({ offer, onSaved }: { offer?: DashboardOffer; onSaved?
     <div className="space-y-2 md:col-span-2"><Label htmlFor="features">Benefícios (um por linha)</Label><Textarea id="features" name="features" rows={6} defaultValue={offer?.features.join("\n")} /></div>
     <Toggle label="Oferta ativa" value={active} setValue={setActive} /><Toggle label="Em destaque" value={featured} setValue={setFeatured} />
     {error ? <p className="text-sm text-destructive md:col-span-2">{error}</p> : null}
-    <div className="flex justify-between md:col-span-2">{offer ? <Button type="button" variant="destructive" onClick={remove}><Trash2 />Excluir</Button> : <span />}<Button disabled={saving}>{saving ? <><Loader2 className="animate-spin" />Salvando</> : "Salvar oferta"}</Button></div>
+    <div className="flex justify-between md:col-span-2">{offer ? <Button type="button" variant="destructive" disabled={saving || deleting} onClick={remove}>{deleting ? <><Loader2 className="animate-spin" />Excluindo</> : <><Trash2 />Excluir</>}</Button> : <span />}<Button disabled={saving || deleting}>{saving ? <><Loader2 className="animate-spin" />Salvando</> : "Salvar oferta"}</Button></div>
   </form>
 }
 function CurrencyField({ defaultValue }: { defaultValue?: string }) {

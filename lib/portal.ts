@@ -82,3 +82,15 @@ export const portalFetcher = async <T = PortalData>(url: string): Promise<T> => 
   }
   return payload as T
 }
+
+export async function portalMutation<T>(url: string, init: RequestInit): Promise<T> {
+  const response = await fetch(url, { ...init, cache: "no-store" })
+  const payload: unknown = await response.json().catch(() => null)
+  if (!response.ok) {
+    throw new PortalRequestError(
+      response.status,
+      apiErrorMessage(payload, "Não foi possível concluir a operação."),
+    )
+  }
+  return payload as T
+}

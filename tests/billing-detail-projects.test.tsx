@@ -1,9 +1,20 @@
-import { cleanup, render, screen } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
   projectResults: [] as Array<Record<string, unknown>>,
   mutate: vi.fn(),
+  replace: vi.fn(),
+  refresh: vi.fn(),
+  success: vi.fn(),
+}))
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
+}))
+
+vi.mock("sonner", () => ({
+  toast: { success: mocks.success, error: vi.fn() },
 }))
 
 const order = {
@@ -33,9 +44,15 @@ describe("BillingDetail projects", () => {
   beforeEach(() => {
     mocks.projectResults = []
     mocks.mutate.mockReset()
+    mocks.replace.mockReset()
+    mocks.refresh.mockReset()
+    mocks.success.mockReset()
   })
 
-  afterEach(cleanup)
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
 
   it("oferece cadastrar um projeto com o pedido pré-selecionado", () => {
     render(<BillingDetail type="orders" id="order-1" />)
@@ -55,5 +72,23 @@ describe("BillingDetail projects", () => {
 
     expect(screen.getByRole("link", { name: "Gerenciar projeto" })).toHaveAttribute("href", "/dashboard/projetos/project-1")
     expect(screen.queryByRole("link", { name: "Adicionar projeto" })).not.toBeInTheDocument()
+  })
+
+  it("exclui o pedido e volta para a listagem", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true)
+    const request = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 204 }),
+    )
+    render(<BillingDetail type="orders" id="order-1" />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir pedido" }))
+
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/dashboard/pedidos"))
+    expect(request).toHaveBeenCalledWith(
+      "/api/backoffice/orders/order-1",
+      { method: "DELETE", cache: "no-store" },
+    )
+    expect(mocks.success).toHaveBeenCalledWith("Pedido excluído com sucesso.")
+    expect(mocks.refresh).toHaveBeenCalledOnce()
   })
 })

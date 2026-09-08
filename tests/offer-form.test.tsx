@@ -47,7 +47,7 @@ describe("OfferForm", () => {
   beforeEach(() => vi.clearAllMocks())
   afterEach(cleanup)
 
-  it("exibe sucesso e atualiza a página depois da edição", async () => {
+  it("exibe sucesso e volta para a listagem depois da edição", async () => {
     const onSaved = vi.fn().mockResolvedValue(undefined)
     mocks.dashboardMutation.mockResolvedValue({ ...offer, price: "249.90" })
     render(<OfferForm offer={offer} onSaved={onSaved} />)
@@ -60,7 +60,23 @@ describe("OfferForm", () => {
     const request = mocks.dashboardMutation.mock.calls[0][1]
     expect(JSON.parse(String(request.body))).toEqual(expect.objectContaining({ price: "249.90" }))
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ price: "249.90" }))
-    expect(mocks.replace).toHaveBeenCalledWith("/dashboard/ofertas/assinatura/editar")
+    expect(mocks.replace).toHaveBeenCalledWith("/dashboard/ofertas")
+    expect(mocks.refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it("exibe sucesso e volta para a listagem depois da exclusão", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true)
+    mocks.dashboardMutation.mockResolvedValue(undefined)
+    render(<OfferForm offer={offer} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }))
+
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Oferta excluída com sucesso."))
+    expect(mocks.dashboardMutation).toHaveBeenCalledWith(
+      "/api/backoffice/offers/assinatura",
+      { method: "DELETE" },
+    )
+    expect(mocks.replace).toHaveBeenCalledWith("/dashboard/ofertas")
     expect(mocks.refresh).toHaveBeenCalledTimes(1)
   })
 
@@ -84,5 +100,21 @@ describe("OfferForm", () => {
       { description: "Nome já utilizado" },
     ))
     expect(mocks.refresh).not.toHaveBeenCalled()
+  })
+
+  it("exibe o código retornado pela API quando a exclusão falha", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true)
+    const message = "Erro 400 · VALIDATION_ERROR: Esta oferta possui cobranças vinculadas."
+    mocks.dashboardMutation.mockRejectedValue(new Error(message))
+    render(<OfferForm offer={offer} />)
+
+    fireEvent.click(screen.getByRole("button", { name: "Excluir" }))
+
+    await waitFor(() => expect(mocks.error).toHaveBeenCalledWith(
+      "A oferta não foi excluída.",
+      { description: message },
+    ))
+    expect(screen.getByText(message)).toBeInTheDocument()
+    expect(mocks.replace).not.toHaveBeenCalled()
   })
 })
