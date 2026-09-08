@@ -52,13 +52,25 @@ describe("OfferForm", () => {
     mocks.dashboardMutation.mockResolvedValue({ ...offer, price: "249.90" })
     render(<OfferForm offer={offer} onSaved={onSaved} />)
 
+    expect(screen.getByLabelText("Preço")).toHaveValue("R$\u00a0199,90")
     fireEvent.change(screen.getByLabelText("Preço"), { target: { value: "249.90" } })
     fireEvent.submit(screen.getByRole("button", { name: "Salvar oferta" }).closest("form")!)
 
     await waitFor(() => expect(mocks.success).toHaveBeenCalledWith("Oferta atualizada com sucesso."))
+    const request = mocks.dashboardMutation.mock.calls[0][1]
+    expect(JSON.parse(String(request.body))).toEqual(expect.objectContaining({ price: "249.90" }))
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ price: "249.90" }))
     expect(mocks.replace).toHaveBeenCalledWith("/dashboard/ofertas/assinatura/editar")
     expect(mocks.refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it("aplica máscara financeira enquanto o preço é digitado", () => {
+    render(<OfferForm />)
+
+    const price = screen.getByLabelText("Preço")
+    fireEvent.change(price, { target: { value: "123456" } })
+
+    expect(price).toHaveValue("R$\u00a01.234,56")
   })
 
   it("exibe erro quando a oferta não é atualizada", async () => {

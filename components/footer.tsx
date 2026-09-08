@@ -51,7 +51,7 @@ export default function Footer() {
 
             <div className="mt-6 flex items-center gap-3">
               <a
-                href="https://instagram.com/omi.tecnologia"
+                href="https://www.instagram.com/omi_tecnologia/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-white/70 transition hover:border-white/25 hover:text-white"

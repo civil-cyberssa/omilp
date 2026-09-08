@@ -17,11 +17,59 @@ import { formatApiError } from "@/lib/client-api-error"
 import { formatMoney } from "@/lib/commerce"
 import { trackAnalyticsEvent } from "@/lib/analytics"
 
+const BRAZILIAN_DOCUMENT_PATTERN = /^(?:\d{3}\.\d{3}\.\d{3}-\d{2}|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})$/
+
+export function formatBrazilianDocument(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 14)
+  if (digits.length <= 11) {
+    return digits
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/^(\d{3})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3-$4")
+  }
+  return digits
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})(\d)/, "$1.$2.$3/$4")
+    .replace(/^(\d{2})\.(\d{3})\.(\d{3})\/(\d{4})(\d)/, "$1.$2.$3/$4-$5")
+}
+
+function hasValidCpfCheckDigits(digits: string) {
+  if (digits.length !== 11 || /^(\d)\1{10}$/.test(digits)) return false
+  return [9, 10].every((size) => {
+    const total = digits.slice(0, size).split("").reduce((sum, digit, index) => sum + Number(digit) * (size + 1 - index), 0)
+    return (total * 10 % 11) % 10 === Number(digits[size])
+  })
+}
+
+function hasValidCnpjCheckDigits(digits: string) {
+  if (digits.length !== 14 || /^(\d)\1{13}$/.test(digits)) return false
+  return ([
+    [12, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]],
+    [13, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]],
+  ] as const).every(([size, weights]) => {
+    const total = weights.reduce((sum, weight, index) => sum + Number(digits[index]) * weight, 0)
+    const remainder = total % 11
+    return (remainder < 2 ? 0 : 11 - remainder) === Number(digits[size])
+  })
+}
+
+export function isValidBrazilianDocument(value: string) {
+  const formatted = formatBrazilianDocument(value)
+  if (!BRAZILIAN_DOCUMENT_PATTERN.test(formatted)) return false
+  const digits = formatted.replace(/\D/g, "")
+  return digits.length === 11 ? hasValidCpfCheckDigits(digits) : hasValidCnpjCheckDigits(digits)
+}
+
+const documentSchema = z.string()
+  .refine(isValidBrazilianDocument, "Informe um CPF ou CNPJ válido")
+  .transform((value) => value.replace(/\D/g, ""))
+
 const personSchema = z.object({
   name: z.string().min(3, "Informe o nome completo"),
   email: z.string().email("Informe um e-mail válido"),
   phone: z.string().min(10, "Informe o telefone"),
-  cpf_cnpj: z.string().min(11, "Informe o CPF ou CNPJ"),
+  cpf_cnpj: documentSchema,
   company: z.string().optional(),
   postal_code: z.string().min(8, "Informe um CEP válido"),
   street: z.string().min(2, "Informe a rua"),
@@ -192,6 +240,7 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
               void trackAnalyticsEvent("purchase", {
                 value: result.value ?? 0,
                 currency: result.currency ?? "BRL",
+                transaction_id: result.payment_id ?? result.id,
                 content_ids: result.content_id ? [result.content_id] : [],
                 content_type: "product",
               })
@@ -222,7 +271,7 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
       active = false
       if (timer) clearTimeout(timer)
     }
-  }, [result.content_id, result.currency, result.value, router])
+  }, [result.content_id, result.currency, result.id, result.payment_id, result.value, router])
 
   async function copyPix() {
     if (!result.pix?.payload) return
@@ -318,6 +367,32 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
     }
   }
 
+  function documentField(name: "customer.cpf_cnpj" | "cardholder.cpf_cnpj") {
+    const registration = register(name)
+    const normalize = (event: React.FormEvent<HTMLInputElement>) => {
+      const input = event.currentTarget
+      const digitsBeforeCaret = input.value.slice(0, input.selectionStart ?? input.value.length).replace(/\D/g, "").length
+      const formatted = formatBrazilianDocument(input.value)
+      input.value = formatted
+      setValue(name, formatted, { shouldDirty: true })
+      requestAnimationFrame(() => {
+        const position = caretPositionForDigits(formatted, digitsBeforeCaret)
+        input.setSelectionRange(position, position)
+      })
+    }
+    return {
+      ...registration,
+      onInput: normalize,
+      onAnimationStart: (event: React.AnimationEvent<HTMLInputElement>) => {
+        if (event.animationName === "omi-autofill-start") normalize(event)
+      },
+      onBlur: (event: React.FocusEvent<HTMLInputElement>) => {
+        normalize(event)
+        registration.onBlur(event)
+      },
+    }
+  }
+
   async function submit(values: Values) {
     setSubmitError(null)
     try {
@@ -377,7 +452,7 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
       <div className="space-y-2"><Label htmlFor="customer.name">Nome completo</Label><Input id="customer.name" autoComplete="name" placeholder="Como devemos chamar você?" className={inputClass} {...register("customer.name")} /><Message>{errors.customer?.name?.message}</Message></div>
       <div className="space-y-2"><Label htmlFor="customer.email">E-mail</Label><Input id="customer.email" autoComplete="email" type="email" placeholder="voce@empresa.com" className={inputClass} {...register("customer.email")} /><Message>{errors.customer?.email?.message}</Message></div>
       <div className="space-y-2"><Label htmlFor="customer.phone">Telefone</Label><Input id="customer.phone" autoComplete="tel-national" type="tel" inputMode="tel" placeholder="(71) 99999-9999" className={inputClass} {...phoneField("customer.phone")} /><Message>{errors.customer?.phone?.message}</Message></div>
-      <div className="space-y-2"><Label htmlFor="customer.cpf_cnpj">CPF ou CNPJ</Label><Input id="customer.cpf_cnpj" inputMode="numeric" placeholder="Somente números ou formatado" className={inputClass} {...register("customer.cpf_cnpj")} /><Message>{errors.customer?.cpf_cnpj?.message}</Message></div>
+      <div className="space-y-2"><Label htmlFor="customer.cpf_cnpj">CPF ou CNPJ</Label><Input id="customer.cpf_cnpj" inputMode="numeric" maxLength={18} placeholder="000.000.000-00 ou 00.000.000/0000-00" aria-invalid={Boolean(errors.customer?.cpf_cnpj)} className={inputClass} {...documentField("customer.cpf_cnpj")} /><Message>{errors.customer?.cpf_cnpj?.message}</Message></div>
       <div className="space-y-2 md:col-span-2"><Label htmlFor="customer.company">Empresa (opcional)</Label><Input id="customer.company" autoComplete="organization" placeholder="Nome da sua empresa" className={inputClass} {...register("customer.company")} /></div>
     </div>
     <AddressFields prefix="customer" form={form} loading={loadingPostal === "customer"} lookup={lookupPostalCode} />
@@ -403,7 +478,7 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
           <div className="space-y-2"><Label htmlFor="cardholder.name">Nome completo</Label><Input id="cardholder.name" className={inputClass} {...register("cardholder.name")} /><Message>{errors.cardholder?.name?.message}</Message></div>
           <div className="space-y-2"><Label htmlFor="cardholder.email">E-mail</Label><Input id="cardholder.email" type="email" className={inputClass} {...register("cardholder.email")} /><Message>{errors.cardholder?.email?.message}</Message></div>
           <div className="space-y-2"><Label htmlFor="cardholder.phone">Telefone</Label><Input id="cardholder.phone" autoComplete="tel-national" type="tel" inputMode="tel" className={inputClass} {...phoneField("cardholder.phone")} /><Message>{errors.cardholder?.phone?.message}</Message></div>
-          <div className="space-y-2"><Label htmlFor="cardholder.cpf_cnpj">CPF ou CNPJ</Label><Input id="cardholder.cpf_cnpj" inputMode="numeric" className={inputClass} {...register("cardholder.cpf_cnpj")} /><Message>{errors.cardholder?.cpf_cnpj?.message}</Message></div>
+          <div className="space-y-2"><Label htmlFor="cardholder.cpf_cnpj">CPF ou CNPJ</Label><Input id="cardholder.cpf_cnpj" inputMode="numeric" maxLength={18} placeholder="000.000.000-00 ou 00.000.000/0000-00" aria-invalid={Boolean(errors.cardholder?.cpf_cnpj)} className={inputClass} {...documentField("cardholder.cpf_cnpj")} /><Message>{errors.cardholder?.cpf_cnpj?.message}</Message></div>
         </div>
         <AddressFields prefix="cardholder" form={form} loading={loadingPostal === "cardholder"} lookup={lookupPostalCode} />
       </div> : null}

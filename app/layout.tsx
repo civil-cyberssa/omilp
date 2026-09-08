@@ -122,7 +122,7 @@ const structuredData = {
       logo: `${siteUrl}/Logo%20Omi_Perfil%20Logo%20Branca%202.png`,
       image: `${siteUrl}/Logo%20Omi_Perfil%20Logo%20Branca%202.png`,
       sameAs: [
-        'https://instagram.com/omi.tecnologia',
+        'https://www.instagram.com/omi_tecnologia/',
         'https://www.linkedin.com/company/omitechnology/',
       ],
       founder: { '@id': `${siteUrl}/#matheus-geambastiane` },
@@ -188,7 +188,7 @@ const structuredData = {
       },
       telephone: '+55 71 9 9299-7191',
       sameAs: [
-        'https://instagram.com/omi.tecnologia',
+        'https://www.instagram.com/omi_tecnologia/',
         'https://www.linkedin.com/company/omitechnology/',
       ],
       knowsAbout: [

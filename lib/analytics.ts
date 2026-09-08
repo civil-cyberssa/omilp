@@ -4,6 +4,23 @@ import { trackMetaPixelEvent, type MetaEventType } from "@/lib/meta-pixel"
 
 export type AnalyticsEventType = MetaEventType
 
+type GtagFunction = (
+  command: "event",
+  eventName: string,
+  parameters: Record<string, unknown>,
+) => void
+
+declare global {
+  interface Window {
+    gtag?: GtagFunction
+  }
+}
+
+const GA4_EVENT_NAMES: Partial<Record<AnalyticsEventType, string>> = {
+  initiate_checkout: "begin_checkout",
+  purchase: "purchase",
+}
+
 const UTM_FIELDS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"] as const
 const ATTRIBUTION_KEY = "omi_campaign_attribution"
 
@@ -41,6 +58,34 @@ function facebookClickId() {
   return clickId ? `fb.1.${Date.now()}.${clickId}`.slice(0, 255) : ""
 }
 
+function trackGoogleAnalyticsEvent(
+  eventType: AnalyticsEventType,
+  eventId: string,
+  metadata: Record<string, string | number | boolean | string[]>,
+) {
+  const eventName = GA4_EVENT_NAMES[eventType]
+  if (!window.gtag || !eventName) return
+
+  const { content_ids: contentIds, content_type: contentType, ...parameters } = metadata
+  const itemIds = Array.isArray(contentIds) ? contentIds : []
+
+  window.gtag("event", eventName, {
+    ...parameters,
+    event_id: eventId,
+    ...(eventType === "purchase" && !parameters.transaction_id
+      ? { transaction_id: eventId }
+      : {}),
+    ...(itemIds.length
+      ? {
+          items: itemIds.map((itemId) => ({
+            item_id: itemId,
+            ...(typeof contentType === "string" ? { item_category: contentType } : {}),
+          })),
+        }
+      : {}),
+  })
+}
+
 export async function trackAnalyticsEvent(
   eventType: AnalyticsEventType,
   metadata: Record<string, string | number | boolean | string[]> = {},
@@ -49,6 +94,7 @@ export async function trackAnalyticsEvent(
   if (typeof window === "undefined" || navigator.doNotTrack === "1") return
   const attribution = campaignAttribution()
   trackMetaPixelEvent(eventType, eventId, metadata)
+  trackGoogleAnalyticsEvent(eventType, eventId, metadata)
   try {
     await fetch("/api/analytics/events", {
       method: "POST",

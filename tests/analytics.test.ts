@@ -11,6 +11,7 @@ describe("analytics da landing page", () => {
     sessionStorage.clear()
     delete window.fbq
     delete window._fbq
+    delete window.gtag
   })
 
   it("envia UTMs e metadados sem incluir dados pessoais", async () => {
@@ -72,6 +73,41 @@ describe("analytics da landing page", () => {
     ])
     const payload = JSON.parse(String(fetchMock.mock.calls[0][1]?.body))
     expect(payload.event_id).toBe("ddcd3c0d-24c9-4fc8-bc1c-a3fc100f6578")
+  })
+
+  it("envia início de checkout e compra para o GA4", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ accepted: true }))
+    const gtag = vi.fn()
+    window.gtag = gtag
+
+    await trackAnalyticsEvent("initiate_checkout", {
+      value: 89.9,
+      currency: "BRL",
+      content_ids: ["profissional"],
+      content_type: "product",
+    }, "checkout-event")
+    await trackAnalyticsEvent("purchase", {
+      value: 89.9,
+      currency: "BRL",
+      transaction_id: "payment-123",
+      content_ids: ["profissional"],
+      content_type: "product",
+    }, "purchase-event")
+
+    expect(gtag).toHaveBeenNthCalledWith(1, "event", "begin_checkout", {
+      value: 89.9,
+      currency: "BRL",
+      event_id: "checkout-event",
+      items: [{ item_id: "profissional", item_category: "product" }],
+    })
+    expect(gtag).toHaveBeenNthCalledWith(2, "event", "purchase", {
+      value: 89.9,
+      currency: "BRL",
+      transaction_id: "payment-123",
+      event_id: "purchase-event",
+      items: [{ item_id: "profissional", item_category: "product" }],
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it("respeita Do Not Track", async () => {

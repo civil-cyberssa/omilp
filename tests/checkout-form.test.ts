@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import { createElement } from "react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { CheckoutForm, checkoutSchema, formatCreditCardNumber, normalizeBrazilianPhone, PaymentResult } from "@/components/checkout-form"
+import { CheckoutForm, checkoutSchema, formatBrazilianDocument, formatCreditCardNumber, isValidBrazilianDocument, normalizeBrazilianPhone, PaymentResult } from "@/components/checkout-form"
 
 const replace = vi.fn()
 
@@ -29,6 +29,20 @@ describe("formatCreditCardNumber", () => {
   })
 })
 
+describe("CPF/CNPJ", () => {
+  it("aplica a máscara correspondente à quantidade de dígitos", () => {
+    expect(formatBrazilianDocument("52998224725")).toBe("529.982.247-25")
+    expect(formatBrazilianDocument("11222333000181")).toBe("11.222.333/0001-81")
+  })
+
+  it("valida formato e dígitos verificadores", () => {
+    expect(isValidBrazilianDocument("529.982.247-25")).toBe(true)
+    expect(isValidBrazilianDocument("11.222.333/0001-81")).toBe(true)
+    expect(isValidBrazilianDocument("529.982.247-24")).toBe(false)
+    expect(isValidBrazilianDocument("11.111.111/1111-11")).toBe(false)
+  })
+})
+
 describe("normalizeBrazilianPhone", () => {
   it("remove o código do Brasil de números preenchidos automaticamente", () => {
     expect(normalizeBrazilianPhone("+55 (71) 99999-9999")).toBe("71999999999")
@@ -50,7 +64,7 @@ describe("checkoutSchema", () => {
         name: "Maria Cliente",
         email: "maria@example.com",
         phone: "71999999999",
-        cpf_cnpj: "12345678901",
+        cpf_cnpj: "52998224725",
         postal_code: "40020-000",
         street: "Rua Chile",
         address_number: "10",
@@ -64,6 +78,22 @@ describe("checkoutSchema", () => {
     })
 
     expect(result.success).toBe(true)
+  })
+
+  it("rejeita CPF/CNPJ inválido", () => {
+    const result = checkoutSchema.safeParse({
+      billing_type: "PIX",
+      cardholder_same_as_customer: true,
+      installment_count: 1,
+      customer: {
+        name: "Maria Cliente", email: "maria@example.com", phone: "71999999999",
+        cpf_cnpj: "111.111.111-11", postal_code: "40020-000", street: "Rua Chile",
+        address_number: "10", neighborhood: "Centro", city: "Salvador",
+        city_code: "2927408", state: "BA", country: "BR",
+      },
+    })
+
+    expect(result.success).toBe(false)
   })
 })
 
@@ -79,6 +109,10 @@ describe("CheckoutForm", () => {
     const phone = screen.getByLabelText("Telefone") as HTMLInputElement
     fireEvent.input(phone, { target: { value: "+55 (71) 99999-9999" } })
     expect(phone.value).toBe("71999999999")
+
+    const document = screen.getByLabelText("CPF ou CNPJ") as HTMLInputElement
+    fireEvent.input(document, { target: { value: "11222333000181" } })
+    expect(document.value).toBe("11.222.333/0001-81")
 
     fireEvent.input(screen.getByLabelText("CEP"), { target: { value: "40020-000" } })
 
@@ -133,6 +167,7 @@ describe("CheckoutForm", () => {
     const payload = JSON.parse(String(request.body))
     expect(payload.billing_type).toBe("CREDIT_CARD")
     expect(payload.credit_card.number).toBe("4444 4444 4444 4444")
+    expect(payload.customer.cpf_cnpj).toBe("24971563792")
     expect(payload.offer).toBe("plano-anual")
     const idempotencyKey = new Headers(request.headers).get("Idempotency-Key")
     expect(idempotencyKey).toMatch(/^[0-9a-f-]{36}$/)

@@ -11,6 +11,22 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { DashboardOffer, dashboardMutation } from "@/lib/dashboard-api"
 
+const brlFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+})
+
+function decimalPriceToCents(value?: string) {
+  if (!value) return null
+  const price = Number(value)
+  return Number.isFinite(price) ? Math.round(price * 100) : null
+}
+
+function maskedPriceToCents(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10)
+  return digits ? Number.parseInt(digits, 10) : null
+}
+
 export function OfferForm({ offer, onSaved }: { offer?: DashboardOffer; onSaved?: (saved: DashboardOffer) => void | Promise<void> }) {
   const router = useRouter(); const [saving, setSaving] = useState(false); const [error, setError] = useState("")
   const [kind, setKind] = useState(offer?.kind ?? "SUBSCRIPTION"); const [cycle, setCycle] = useState(offer?.cycle ?? "MONTHLY")
@@ -23,13 +39,30 @@ export function OfferForm({ offer, onSaved }: { offer?: DashboardOffer; onSaved?
     <div className="space-y-2 md:col-span-2"><Label htmlFor="description">Descrição</Label><Textarea id="description" name="description" defaultValue={offer?.description} rows={5} /></div>
     <div className="space-y-2"><Label>Tipo</Label><Select value={kind} onValueChange={(value) => setKind(value as "SUBSCRIPTION" | "ONE_TIME")}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="SUBSCRIPTION">Assinatura</SelectItem><SelectItem value="ONE_TIME">Pagamento único</SelectItem></SelectContent></Select></div>
     <div className="space-y-2"><Label>Ciclo</Label><Select value={cycle} onValueChange={setCycle} disabled={kind === "ONE_TIME"}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[["WEEKLY","Semanal"],["BIWEEKLY","Quinzenal"],["MONTHLY","Mensal"],["BIMONTHLY","Bimestral"],["QUARTERLY","Trimestral"],["SEMIANNUALLY","Semestral"],["YEARLY","Anual"]].map(([v,l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}</SelectContent></Select></div>
-    <Field name="price" label="Preço" type="number" step="0.01" defaultValue={offer?.price} required /><Field name="sort_order" label="Ordem" type="number" defaultValue={String(offer?.sort_order ?? 0)} />
+    <CurrencyField defaultValue={offer?.price} /><Field name="sort_order" label="Ordem" type="number" defaultValue={String(offer?.sort_order ?? 0)} />
     <Field name="monthly_change_request_limit" label="Alterações permitidas por mês" type="number" min="0" defaultValue={String(offer?.monthly_change_request_limit ?? 0)} required />
     <div className="space-y-2 md:col-span-2"><Label htmlFor="features">Benefícios (um por linha)</Label><Textarea id="features" name="features" rows={6} defaultValue={offer?.features.join("\n")} /></div>
     <Toggle label="Oferta ativa" value={active} setValue={setActive} /><Toggle label="Em destaque" value={featured} setValue={setFeatured} />
     {error ? <p className="text-sm text-destructive md:col-span-2">{error}</p> : null}
     <div className="flex justify-between md:col-span-2">{offer ? <Button type="button" variant="destructive" onClick={remove}><Trash2 />Excluir</Button> : <span />}<Button disabled={saving}>{saving ? <><Loader2 className="animate-spin" />Salvando</> : "Salvar oferta"}</Button></div>
   </form>
+}
+function CurrencyField({ defaultValue }: { defaultValue?: string }) {
+  const [cents, setCents] = useState<number | null>(() => decimalPriceToCents(defaultValue))
+  return <div className="space-y-2">
+    <Label htmlFor="price">Preço</Label>
+    <Input
+      id="price"
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      placeholder="R$ 0,00"
+      value={cents === null ? "" : brlFormatter.format(cents / 100)}
+      onChange={(event) => setCents(maskedPriceToCents(event.target.value))}
+      required
+    />
+    <input type="hidden" name="price" value={cents === null ? "" : (cents / 100).toFixed(2)} />
+  </div>
 }
 function Field({ name, label, ...props }: { name: string; label: string } & React.ComponentProps<typeof Input>) { return <div className="space-y-2"><Label htmlFor={name}>{label}</Label><Input id={name} name={name} {...props} /></div> }
 function Toggle({ label, value, setValue }: { label: string; value: boolean; setValue: (value: boolean) => void }) { return <div className="flex items-center justify-between rounded-lg border p-4"><Label>{label}</Label><Switch checked={value} onCheckedChange={setValue} /></div> }
