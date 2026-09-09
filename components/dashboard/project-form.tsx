@@ -63,7 +63,7 @@ export function ProjectForm({ initialSourceType = "subscription", initialSourceI
         <Label>Contratação</Label>
         <Select value={sourceId} onValueChange={setSourceId}>
           <SelectTrigger><SelectValue placeholder="Selecione cliente e oferta" /></SelectTrigger>
-          <SelectContent>{sources?.map((item) => <SelectItem key={item.id} value={item.id}>{item.customer.name} · {item.offer.name}</SelectItem>)}</SelectContent>
+          <SelectContent>{sources?.map((item) => <SelectItem key={item.id} value={item.id} disabled={!item.customer}>{item.customer?.name ?? "Aguardando dados do cliente"} · {item.offer.name}</SelectItem>)}</SelectContent>
         </Select>
       </div>
       <div className="space-y-2 md:col-span-2">

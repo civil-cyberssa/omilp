@@ -108,6 +108,7 @@ export const checkoutSchema = z.object({
 })
 
 type Values = z.infer<typeof checkoutSchema>
+export type CheckoutCustomer = z.infer<typeof personSchema>
 type PersonPrefix = "customer" | "cardholder"
 type Offer = { slug: string; cycle: string; price: string }
 type AddressData = { postal_code: string; street: string; address_complement: string; neighborhood: string; city: string; city_code: string; state: string; country: string }
@@ -299,8 +300,9 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
   </div>
 }
 
-export function CheckoutForm({ offer }: { offer: Offer }) {
-  const form = useForm<Values>({ resolver: zodResolver(checkoutSchema), defaultValues: { billing_type: "PIX", cardholder_same_as_customer: true, installment_count: 1, customer: { country: "BR", city_code: "" } } })
+export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustomer, collectPayment = true }: { offer: Offer; endpoint?: string; initialCustomer?: Partial<CheckoutCustomer>; collectPayment?: boolean }) {
+  const router = useRouter()
+  const form = useForm<Values>({ resolver: zodResolver(checkoutSchema), defaultValues: { billing_type: "PIX", cardholder_same_as_customer: true, installment_count: 1, customer: { country: "BR", city_code: "", ...initialCustomer } } })
   const { register, handleSubmit, watch, getValues, setValue, resetField, unregister, formState: { errors, isSubmitting } } = form
   const billingType = watch("billing_type")
   const sameCardholder = watch("cardholder_same_as_customer")
@@ -397,13 +399,13 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
     setSubmitError(null)
     try {
       idempotencyKey.current ??= crypto.randomUUID()
-      const response = await fetch("/api/checkout", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Idempotency-Key": idempotencyKey.current,
         },
-        body: JSON.stringify({ ...values, offer: offer.slug }),
+        body: JSON.stringify(collectPayment ? { ...values, offer: offer.slug } : { customer: values.customer }),
       })
       const data = await response.json().catch(() => ({ error: { status: response.status, code: "INVALID_RESPONSE", details: { message: "A rota retornou uma resposta inválida." } } }))
       if (!response.ok) {
@@ -411,12 +413,16 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
         setSubmitError(message)
         return void toast.error(message)
       }
-      if (values.billing_type === "PIX" && !data.pix?.payload) {
+      if (collectPayment && values.billing_type === "PIX" && !data.pix?.payload) {
         const message = "Erro 502 · O Asaas não retornou o QR Code Pix."
         setSubmitError(message)
         return void toast.error(message)
       }
       resetField("credit_card")
+      if (!collectPayment) {
+        router.replace("/briefing")
+        return
+      }
       void trackAnalyticsEvent("initiate_checkout", {
         value: Number(offer.price),
         currency: "BRL",
@@ -457,7 +463,7 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
     </div>
     <AddressFields prefix="customer" form={form} loading={loadingPostal === "customer"} lookup={lookupPostalCode} />
 
-    <fieldset className="space-y-3"><legend className="text-sm font-medium text-white/80">Forma de pagamento</legend><div className="grid gap-3 sm:grid-cols-2">
+    {collectPayment ? <><fieldset className="space-y-3"><legend className="text-sm font-medium text-white/80">Forma de pagamento</legend><div className="grid gap-3 sm:grid-cols-2">
       {([{ value: "PIX", label: "Pix", icon: QrCode }, { value: "CREDIT_CARD", label: "Cartão de crédito", icon: CreditCard }] as const).map(({ value, label, icon: Icon }) => <label key={value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition ${billingType === value ? "border-[#596BFF] bg-[#4338FF]/15 shadow-[0_0_24px_rgba(67,56,255,.12)]" : "border-white/10 bg-white/[.025] hover:border-white/20"}`}><input type="radio" value={value} className="sr-only" {...register("billing_type")} onChange={(event) => { register("billing_type").onChange(event); setValue("installment_count", 1) }} /><Icon className="h-5 w-5 text-[#9AA8FF]" /><span className="font-medium">{label}</span></label>)}
     </div></fieldset>
 
@@ -482,10 +488,10 @@ export function CheckoutForm({ offer }: { offer: Offer }) {
         </div>
         <AddressFields prefix="cardholder" form={form} loading={loadingPostal === "cardholder"} lookup={lookupPostalCode} />
       </div> : null}
-    </div> : null}
+    </div> : null}</> : null}
 
     {submitError ? <p role="alert" className="rounded-xl border border-pink-400/25 bg-pink-400/[.07] px-4 py-3 text-sm text-pink-200">{submitError}</p> : null}
-    <Button type="submit" disabled={isSubmitting} className="h-12 w-full rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] text-white hover:brightness-110">{isSubmitting ? <><Loader2 className="animate-spin" />Processando com segurança</> : <>Finalizar pagamento <ArrowRight /></>}</Button>
-    <p className="flex items-center justify-center gap-2 text-xs text-white/38"><LockKeyhole className="h-3.5 w-3.5" />Seus dados de cartão não são armazenados pela Omi.</p>
+    <Button type="submit" disabled={isSubmitting} className="h-12 w-full rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] text-white hover:brightness-110">{isSubmitting ? <><Loader2 className="animate-spin" />Processando com segurança</> : collectPayment ? <>Finalizar pagamento <ArrowRight /></> : <>Salvar dados e preencher briefing <ArrowRight /></>}</Button>
+    {collectPayment ? <p className="flex items-center justify-center gap-2 text-xs text-white/38"><LockKeyhole className="h-3.5 w-3.5" />Seus dados de cartão não são armazenados pela Omi.</p> : null}
   </form>
 }

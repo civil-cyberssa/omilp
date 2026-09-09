@@ -82,14 +82,20 @@ export type DashboardOffer = {
   kind: "SUBSCRIPTION" | "ONE_TIME"; price: string; cycle: string; features: string[]
   is_featured: boolean; is_active: boolean; sort_order: number; monthly_change_request_limit: number; created_at: string; updated_at: string
 }
-export type BillingCustomer = { id: string; name: string; email: string; phone: string; company: string; cpf_cnpj: string }
+export type BillingCustomer = {
+  id: string; name: string; email: string; phone: string; company: string; cpf_cnpj: string
+  street?: string; address_number?: string; address_complement?: string; neighborhood?: string
+  city?: string; city_code?: string; postal_code?: string; state?: string; country?: string
+}
 export type DashboardOrder = {
-  id: string; customer: BillingCustomer; offer: DashboardOffer; status: string; billing_type: string
-  total: string; due_date: string; notes: string; checkout_url: string; monthly_change_request_limit: number; created_at: string; updated_at: string
+  id: string; customer: BillingCustomer | null; offer: DashboardOffer; status: string; billing_type: string
+  base_price: string | null; discount_type: "PERCENTAGE" | "FIXED"; discount_value: string
+  discount_percentage: string; is_manual: boolean; total: string; due_date: string
+  notes: string; checkout_url: string; payment_link: string; monthly_change_request_limit: number; created_at: string; updated_at: string
 }
 export type DashboardSubscription = {
   id: string; customer: BillingCustomer; offer: DashboardOffer; status: string; billing_type: string
-  value: string; cycle: string; next_due_date: string; checkout_url: string; monthly_change_request_limit: number; created_at: string; updated_at: string
+  value: string; cycle: string; next_due_date: string; checkout_url: string; payment_link: string; monthly_change_request_limit: number; created_at: string; updated_at: string
 }
 
 export type DashboardProject = {

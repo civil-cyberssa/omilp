@@ -1,6 +1,6 @@
 "use client"
 
-import { ExternalLink, Globe2, Loader2, Plus, Trash2 } from "lucide-react"
+import { ExternalLink, Globe2, Loader2, Plus, Send, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -75,11 +75,25 @@ export function BillingDetail({ type, id }: { type: "orders" | "subscriptions"; 
     }
   }
 
+  async function sharePaymentLink(paymentLink: string, offerName: string) {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `Oferta ${offerName}`, text: "Confira sua oferta e prossiga com o pagamento:", url: paymentLink })
+      } else {
+        await navigator.clipboard.writeText(paymentLink)
+        toast.success("Link da oferta copiado.")
+      }
+    } catch (cause) {
+      if (cause instanceof DOMException && cause.name === "AbortError") return
+      toast.error("Não foi possível compartilhar o link.")
+    }
+  }
+
   return <div className="mx-auto max-w-5xl space-y-7">
     <div><p className="text-sm font-medium text-[#155EEF]">Financeiro</p><h1 className="mt-1 text-3xl font-semibold">{isOrder ? "Pedido" : "Assinatura"}</h1><p className="mt-2 font-mono text-xs text-muted-foreground">{data.id}</p></div>
     <div className="grid gap-5 lg:grid-cols-2">
-      <Card><CardHeader><CardTitle>Contratação</CardTitle></CardHeader><CardContent className="space-y-4"><Row label="Oferta" value={data.offer.name} /><Row label="Valor" value={formatMoney(isOrder ? data.total : data.value)} />{!isOrder ? <Row label="Ciclo" value={cycleLabel[data.cycle] ?? data.cycle} /> : null}<Row label="Criado em" value={formatDashboardDateTime(data.created_at)} />{data.checkout_url ? <a href={data.checkout_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-[#4338FF]">Abrir checkout <ExternalLink className="h-4 w-4" /></a> : null}</CardContent></Card>
-      <Card><CardHeader><CardTitle>Cliente</CardTitle></CardHeader><CardContent className="space-y-4"><Row label="Nome" value={data.customer.name} /><Row label="E-mail" value={data.customer.email} /><Row label="Telefone" value={data.customer.phone || "—"} /><Row label="Empresa" value={data.customer.company || "—"} /></CardContent></Card>
+      <Card><CardHeader><CardTitle>Contratação</CardTitle></CardHeader><CardContent className="space-y-4"><Row label="Oferta" value={data.offer.name} />{isOrder && data.base_price && Number(data.discount_value) > 0 ? <><Row label="Preço original" value={formatMoney(data.base_price)} /><Row label="Desconto" value={data.discount_type === "FIXED" ? formatMoney(data.discount_value) : `${Number(data.discount_value).toLocaleString("pt-BR")}%`} /></> : null}<Row label="Valor" value={formatMoney(isOrder ? data.total : data.value)} />{!isOrder ? <Row label="Ciclo" value={cycleLabel[data.cycle] ?? data.cycle} /> : null}<Row label="Criado em" value={formatDashboardDateTime(data.created_at)} />{data.payment_link ? <Button type="button" className="w-full" onClick={() => sharePaymentLink(data.payment_link, data.offer.name)}><Send className="h-4 w-4" />Enviar link da oferta</Button> : null}{data.checkout_url ? <a href={data.checkout_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-[#4338FF]">Abrir checkout <ExternalLink className="h-4 w-4" /></a> : null}</CardContent></Card>
+      <Card><CardHeader><CardTitle>Cliente</CardTitle></CardHeader><CardContent className="space-y-4">{data.customer ? <><Row label="Nome" value={data.customer.name} /><Row label="E-mail" value={data.customer.email} /><Row label="Telefone" value={data.customer.phone || "—"} /><Row label="Empresa" value={data.customer.company || "—"} /></> : <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Os dados serão preenchidos pelo cliente através do link da oferta.</p>}</CardContent></Card>
       <Card className="lg:col-span-2"><CardHeader><CardTitle>Status financeiro</CardTitle></CardHeader><CardContent><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center"><div><Badge>{data.status}</Badge><p className="mt-3 text-xs text-muted-foreground">O pagamento é atualizado somente pelos webhooks do Asaas.</p></div><div className="flex flex-wrap gap-2">{canCancel ? <Button variant="destructive" disabled={canceling || deleting} onClick={cancel}>{canceling ? <><Loader2 className="animate-spin" />Cancelando</> : isOrder ? "Cancelar no Asaas" : "Cancelar assinatura"}</Button> : null}{canDelete ? <Button variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive" disabled={canceling || deleting} onClick={remove}>{deleting ? <><Loader2 className="animate-spin" />Excluindo</> : <><Trash2 />Excluir {isOrder ? "pedido" : "assinatura"}</>}</Button> : null}</div></div>{cancelError ? <p className="mt-4 text-sm text-destructive">{cancelError}</p> : null}</CardContent></Card>
       <Card className="lg:col-span-2"><CardHeader><CardTitle>Solicitações de alteração</CardTitle></CardHeader><CardContent><form action={saveLimit} className="flex flex-col gap-3 sm:flex-row sm:items-end"><div className="flex-1 space-y-2"><label htmlFor="monthly_change_request_limit" className="text-sm font-medium">Limite mensal específico</label><input id="monthly_change_request_limit" name="monthly_change_request_limit" type="number" min="0" defaultValue={data.monthly_change_request_limit} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></div><Button disabled={limitSaving}>{limitSaving ? <><Loader2 className="animate-spin" />Salvando</> : "Salvar limite"}</Button></form>{limitError ? <p className="mt-3 text-sm text-destructive">{limitError}</p> : null}<p className="mt-3 text-xs text-muted-foreground">Este valor substitui o limite copiado da oferta para esta contratação.</p></CardContent></Card>
       <Card className="lg:col-span-2">
