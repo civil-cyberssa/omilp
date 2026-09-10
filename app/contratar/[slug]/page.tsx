@@ -1,8 +1,9 @@
 import type { Metadata } from "next"
-import { Check } from "lucide-react"
+import { Check, MessageCircle } from "lucide-react"
 import { notFound } from "next/navigation"
 
 import { CheckoutForm } from "@/components/checkout-form"
+import { ConversionLink } from "@/components/conversion-link"
 import Footer from "@/components/footer"
 import Navbar from "@/components/navbar"
 import { OfferPrice } from "@/components/offer-price"
@@ -32,6 +33,8 @@ export default async function CheckoutPage({ params }: Props) {
   if (!offer) notFound()
   const pricing = getOfferPricing(offer)
   const compactPrice = `${formatMoney(pricing.displayAmount)}${pricing.displayCycle ? `/${pricing.displayCycle}` : ""}`
+  const whatsappMessage = `Olá! Quero contratar o plano ${offer.name} da Omi pelo WhatsApp.`
+  const whatsappHref = `https://wa.me/5571992997191?text=${encodeURIComponent(whatsappMessage)}`
   return <main className="min-h-screen bg-[radial-gradient(circle_at_10%_10%,rgba(21,94,239,.22),transparent_28%),radial-gradient(circle_at_90%_85%,rgba(208,0,184,.16),transparent_28%),linear-gradient(135deg,#020617,#07143D_58%,#17062D)] text-white">
     <Navbar />
     <section className="container mx-auto grid max-w-6xl gap-6 px-6 pb-24 pt-28 lg:grid-cols-[.9fr_1.1fr] lg:gap-12 lg:pt-44">
@@ -62,6 +65,22 @@ export default async function CheckoutPage({ params }: Props) {
         <h2 className="mt-3 text-3xl font-semibold tracking-[-.03em] lg:hidden">Assine o plano {offer.name}.</h2>
         <h2 className="mt-3 hidden text-3xl font-semibold tracking-[-.03em] lg:block">Assine em poucos passos.</h2>
         <p className="mb-8 mt-3 text-sm leading-6 text-white/50">Preencha os dados necessários para a cobrança e escolha entre Pix e cartão.</p>
+        <div className="mb-8 rounded-2xl border border-emerald-300/20 bg-emerald-300/[.055] p-4">
+          <p className="text-sm font-medium text-white/82">Prefere falar com uma pessoa?</p>
+          <p className="mt-1 text-xs leading-5 text-white/48">Contrate este plano diretamente com a equipe da Omi.</p>
+          <ConversionLink
+            href={whatsappHref}
+            event="whatsapp_click"
+            eventData={{ placement: "checkout", offer: offer.slug, value: Number(offer.price) }}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 flex h-12 w-full items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-400/10 px-5 text-sm font-semibold text-emerald-100 transition hover:border-emerald-300/55 hover:bg-emerald-400/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300"
+          >
+            <MessageCircle className="mr-2 h-4 w-4" aria-hidden="true" />
+            Contratar pelo WhatsApp
+          </ConversionLink>
+        </div>
+        <div className="mb-8 flex items-center gap-4" aria-hidden="true"><span className="h-px flex-1 bg-white/10" /><span className="text-[10px] font-semibold uppercase tracking-[.2em] text-white/30">ou continue online</span><span className="h-px flex-1 bg-white/10" /></div>
         <CheckoutForm offer={{ slug: offer.slug, cycle: offer.cycle, price: offer.price, kind: offer.kind }} />
       </div>
     </section><Footer />
