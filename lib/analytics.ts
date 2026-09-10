@@ -2,7 +2,9 @@
 
 import { isMetaEventType, trackMetaPixelEvent, type MetaEventType } from "@/lib/meta-pixel"
 
-export type AnalyticsEventType = MetaEventType | "section_view" | "offer_view"
+export type AnalyticsEventType = MetaEventType | "section_view" | "offer_view" | "checkout_error"
+
+export type AnalyticsMetadata = Record<string, unknown>
 
 type GtagFunction = (
   command: "event",
@@ -61,7 +63,7 @@ function facebookClickId() {
 function trackGoogleAnalyticsEvent(
   eventType: AnalyticsEventType,
   eventId: string,
-  metadata: Record<string, string | number | boolean | string[]>,
+  metadata: AnalyticsMetadata,
 ) {
   const eventName = GA4_EVENT_NAMES[eventType]
   if (!window.gtag || !eventName) return
@@ -88,12 +90,18 @@ function trackGoogleAnalyticsEvent(
 
 export async function trackAnalyticsEvent(
   eventType: AnalyticsEventType,
-  metadata: Record<string, string | number | boolean | string[]> = {},
+  metadata: AnalyticsMetadata = {},
   eventId = crypto.randomUUID(),
 ) {
   if (typeof window === "undefined" || navigator.doNotTrack === "1") return
   const attribution = campaignAttribution()
-  if (isMetaEventType(eventType)) trackMetaPixelEvent(eventType, eventId, metadata)
+  if (isMetaEventType(eventType)) {
+    trackMetaPixelEvent(
+      eventType,
+      eventId,
+      metadata as Record<string, string | number | boolean | string[]>,
+    )
+  }
   trackGoogleAnalyticsEvent(eventType, eventId, metadata)
   try {
     await fetch("/api/analytics/events", {

@@ -3,14 +3,14 @@
 import { useState } from "react"
 import useSWR from "swr"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { BarChart3, Eye, LayoutPanelTop, MousePointerClick, Route, Send, Tags, Users } from "lucide-react"
+import { AlertTriangle, BarChart3, Eye, LayoutPanelTop, MousePointerClick, Route, Send, Tags, Users } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { AnalyticsSummary, dashboardFetcher } from "@/lib/dashboard-api"
+import { AnalyticsSummary, dashboardFetcher, formatDashboardDateTime } from "@/lib/dashboard-api"
 
 const numberFormatter = new Intl.NumberFormat("pt-BR")
 const shortDateFormatter = new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit" })
@@ -41,6 +41,60 @@ function heatClass(value: number, maximum: number) {
   if (ratio <= 0.5) return "border-[#AEB6FF] bg-[#BDC4FF]"
   if (ratio <= 0.75) return "border-[#737FFF] bg-[#818CFF]"
   return "border-[#3442D9] bg-[#4338FF]"
+}
+
+const checkoutErrorLabels: Record<string, string> = {
+  form_validation: "Validação do formulário",
+  http_error: "Resposta HTTP",
+  invalid_response: "Resposta inválida",
+  network_error: "Falha de conexão",
+  postal_code_lookup: "Consulta de CEP",
+  runtime_error: "Erro de JavaScript",
+  unknown: "Não classificado",
+}
+
+function formatCapturedJson(value: unknown) {
+  if (value === null || value === undefined) return "Não disponível"
+  try {
+    return JSON.stringify(value, null, 2)
+  } catch {
+    return "Não foi possível exibir o conteúdo capturado"
+  }
+}
+
+function CheckoutErrors({ data }: { data: AnalyticsSummary }) {
+  const errors = data.checkout_errors ?? []
+  const types = data.checkout_error_types ?? []
+  return <Card className="overflow-hidden border-rose-200 shadow-[0_16px_50px_rgba(225,29,72,.06)]">
+    <CardHeader>
+      <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-rose-600" />Erros na contratação</CardTitle>
+      <CardDescription>Ocorrências na jornada de checkout, com dados técnicos e valores sanitizados. Nome, e-mail e telefone ficam visíveis; documentos, endereço e informações financeiras permanecem protegidos.</CardDescription>
+      {types.length ? <div className="flex flex-wrap gap-2 pt-3">{types.map((item) => <span key={item.error_type || "unknown"} className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-medium text-rose-800">{checkoutErrorLabels[item.error_type] ?? item.error_type ?? "Não classificado"} · {formatNumber(item.count)}</span>)}</div> : null}
+    </CardHeader>
+    <CardContent className="p-0">
+      {errors.length ? <div className="divide-y">{errors.map((error) => <details key={error.id} className="group px-5 py-4 open:bg-muted/30">
+        <summary className="grid cursor-pointer list-none gap-3 marker:hidden sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-center">
+          <span className="text-xs text-muted-foreground">{formatDashboardDateTime(error.created_at)}</span>
+          <span className="min-w-0"><span className="block truncate text-sm font-semibold">{checkoutErrorLabels[error.error_type] ?? error.error_type}</span><span className="block truncate font-mono text-[10px] text-muted-foreground">{error.error_code || "SEM_CÓDIGO"} · {error.endpoint || error.path}</span></span>
+          <span className="flex items-center gap-2 text-xs"><span className="rounded-full border bg-background px-2.5 py-1 font-mono">{error.status_code ? `HTTP ${error.status_code}` : "Sem status"}</span><span className="text-muted-foreground transition group-open:rotate-180">⌄</span></span>
+        </summary>
+        <div className="mt-5 space-y-5 border-t pt-5">
+          <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-xs text-muted-foreground">Oferta</p><p className="mt-1 font-medium">{error.offer || "Não identificada"}</p></div>
+            <div><p className="text-xs text-muted-foreground">Pagamento</p><p className="mt-1 font-medium">{error.billing_type || "Não selecionado"}</p></div>
+            <div><p className="text-xs text-muted-foreground">Etapa</p><p className="mt-1 font-medium">{error.checkout_step ?? "—"}</p></div>
+            <div><p className="text-xs text-muted-foreground">Requisição</p><p className="mt-1 break-all font-mono text-xs">{error.method || "—"} {error.endpoint || "—"}</p></div>
+          </div>
+          <div className="rounded-lg border border-rose-100 bg-rose-50/60 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-rose-700">Mensagem</p><p className="mt-2 text-sm text-rose-950">{error.message || "Erro sem mensagem"}</p>{error.validation_fields?.length ? <p className="mt-2 font-mono text-xs text-rose-700">Campos: {error.validation_fields.join(", ")}</p> : null}</div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">JSON da requisição</p><pre className="max-h-80 overflow-auto rounded-lg bg-[#0B1020] p-4 text-[11px] leading-5 text-slate-200">{formatCapturedJson(error.request_payload)}</pre></div>
+            <div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inputs preenchidos</p><pre className="max-h-80 overflow-auto rounded-lg bg-[#0B1020] p-4 text-[11px] leading-5 text-slate-200">{formatCapturedJson(error.inputs)}</pre></div>
+          </div>
+          {error.response_payload !== null && error.response_payload !== undefined ? <div><p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Resposta recebida</p><pre className="max-h-80 overflow-auto rounded-lg bg-[#0B1020] p-4 text-[11px] leading-5 text-slate-200">{formatCapturedJson(error.response_payload)}</pre></div> : null}
+        </div>
+      </details>)}</div> : <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhum erro de contratação registrado neste período.</p>}
+    </CardContent>
+  </Card>
 }
 
 function AccessHeatmap({ rows, periodDays }: { rows: AnalyticsSummary["hourly"]; periodDays: number }) {
@@ -94,6 +148,7 @@ export default function AnalyticsPage() {
     { label: "Visualizações de ofertas", value: formatNumber(data.totals.offer_views ?? 0), icon: Tags },
     { label: "Visitantes que viram ofertas", value: formatNumber(data.totals.offer_viewers ?? 0), icon: Users },
     { label: "Alcance das ofertas", value: `${(data.totals.offer_view_rate ?? 0).toLocaleString("pt-BR")}%`, icon: LayoutPanelTop },
+    { label: "Erros na contratação", value: formatNumber(data.totals.checkout_errors ?? 0), icon: AlertTriangle },
   ] : []
 
   return (
@@ -140,7 +195,7 @@ export default function AnalyticsPage() {
           <Card className="overflow-hidden border-[#4338FF]/10">
             <CardHeader><CardTitle className="flex items-center gap-2"><LayoutPanelTop className="h-4 w-4 text-[#4338FF]" />Seções visualizadas</CardTitle><CardDescription>Blocos da página que chegaram à área visível do visitante.</CardDescription></CardHeader>
             <CardContent className="p-0">
-              {(data.sections ?? []).length ? <Table><TableHeader><TableRow><TableHead>Seção</TableHead><TableHead>Página</TableHead><TableHead className="text-right">Views</TableHead><TableHead className="text-right">Visitantes</TableHead></TableRow></TableHeader><TableBody>{data.sections.map((section) => <TableRow key={`${section.path}:${section.section_id}`}><TableCell><p className="max-w-56 truncate font-medium" title={section.section_name}>{section.section_name}</p><p className="font-mono text-[10px] text-muted-foreground">#{section.section_id}</p></TableCell><TableCell className="max-w-48 truncate font-mono text-xs" title={section.path}>{section.path}</TableCell><TableCell className="text-right font-medium">{formatNumber(section.views)}</TableCell><TableCell className="text-right">{formatNumber(section.visitors)}</TableCell></TableRow>)}</TableBody></Table> : <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhuma seção visualizada no período.</p>}
+              {(data.sections ?? []).length ? <div className="max-h-[28rem] overflow-auto"><Table><TableHeader className="sticky top-0 z-10 bg-card shadow-[0_1px_0_hsl(var(--border))]"><TableRow><TableHead>Seção</TableHead><TableHead>Página</TableHead><TableHead className="text-right">Views</TableHead><TableHead className="text-right">Visitantes</TableHead></TableRow></TableHeader><TableBody>{data.sections.map((section) => <TableRow key={`${section.path}:${section.section_id}`}><TableCell><p className="max-w-56 truncate font-medium" title={section.section_name}>{section.section_name}</p><p className="font-mono text-[10px] text-muted-foreground">#{section.section_id}</p></TableCell><TableCell className="max-w-48 truncate font-mono text-xs" title={section.path}>{section.path}</TableCell><TableCell className="text-right font-medium">{formatNumber(section.views)}</TableCell><TableCell className="text-right">{formatNumber(section.visitors)}</TableCell></TableRow>)}</TableBody></Table></div> : <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhuma seção visualizada no período.</p>}
             </CardContent>
           </Card>
         </div>
@@ -151,6 +206,8 @@ export default function AnalyticsPage() {
             {(data.offers ?? []).length ? <Table><TableHeader><TableRow><TableHead>Oferta</TableHead><TableHead>Página</TableHead><TableHead className="text-right">Visualizações</TableHead><TableHead className="text-right">Visitantes</TableHead><TableHead className="text-right">Sessões</TableHead></TableRow></TableHeader><TableBody>{data.offers.map((offer) => <TableRow key={`${offer.path}:${offer.offer}`}><TableCell><p className="font-medium">{offer.offer_name}</p><p className="font-mono text-[10px] text-muted-foreground">{offer.offer}</p></TableCell><TableCell className="max-w-64 truncate font-mono text-xs" title={offer.path}>{offer.path}</TableCell><TableCell className="text-right font-semibold text-[#D000B8]">{formatNumber(offer.views)}</TableCell><TableCell className="text-right">{formatNumber(offer.visitors)}</TableCell><TableCell className="text-right">{formatNumber(offer.sessions)}</TableCell></TableRow>)}</TableBody></Table> : <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhuma oferta foi visualizada no período.</p>}
           </CardContent>
         </Card>
+
+        <CheckoutErrors data={data} />
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="overflow-hidden border-[#4338FF]/10"><CardHeader><CardTitle>Origens</CardTitle></CardHeader><CardContent className="p-0">{data.sources.length ? <Table><TableHeader><TableRow><TableHead>UTM source</TableHead><TableHead className="text-right">Acessos</TableHead><TableHead className="text-right">Visitantes</TableHead></TableRow></TableHeader><TableBody>{data.sources.map((source) => <TableRow key={source.label}><TableCell className="font-medium">{source.label || "Direto"}</TableCell><TableCell className="text-right">{formatNumber(source.views)}</TableCell><TableCell className="text-right">{formatNumber(source.visitors)}</TableCell></TableRow>)}</TableBody></Table> : <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhuma origem registrada.</p>}</CardContent></Card>

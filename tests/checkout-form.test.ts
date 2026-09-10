@@ -189,6 +189,62 @@ describe("CheckoutForm", () => {
     const idempotencyKey = new Headers(request.headers).get("Idempotency-Key")
     expect(idempotencyKey).toMatch(/^[0-9a-f-]{36}$/)
   })
+
+  it("registra a falha HTTP do checkout com payload e inputs sanitizados", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      if (String(input).startsWith("/api/postal-code/")) {
+        return Response.json({
+          postal_code: "40020000", street: "Rua Chile", address_complement: "",
+          neighborhood: "Centro", city: "Salvador", city_code: "2927408", state: "BA", country: "BR",
+        })
+      }
+      if (input === "/api/checkout") {
+        return Response.json({
+          error: { status: 422, code: "PAYMENT_REFUSED", details: { message: "Pagamento recusado" } },
+        }, { status: 422 })
+      }
+      return Response.json({ accepted: true })
+    })
+
+    render(createElement(CheckoutForm, { offer: { slug: "essencial", cycle: "MONTHLY", price: "89.90" } }))
+
+    const fill = (label: string, value: string) => fireEvent.change(screen.getByLabelText(label), { target: { value } })
+    fill("Nome completo", "Maria Cliente")
+    fill("E-mail", "maria@example.com")
+    fill("Telefone", "71999999999")
+    fill("CPF ou CNPJ", "24971563792")
+    fill("CEP", "40020000")
+    fill("Rua", "Rua Chile")
+    fill("Número", "10")
+    fill("Bairro", "Centro")
+    fill("Cidade", "Salvador")
+    fill("Estado", "BA")
+    fireEvent.blur(screen.getByLabelText("CEP"))
+    await waitFor(() => expect((document.querySelector('input[name="customer.city_code"]') as HTMLInputElement).value).toBe("2927408"))
+
+    fireEvent.click(screen.getByRole("button", { name: /continuar para pagamento/i }))
+    await screen.findByRole("group", { name: "Forma de pagamento" })
+    fireEvent.click(screen.getByRole("button", { name: /assinar por/i }))
+
+    await waitFor(() => {
+      const event = fetchMock.mock.calls
+        .filter(([input]) => input === "/api/analytics/events")
+        .map(([, init]) => JSON.parse(String(init?.body)))
+        .find((payload) => payload.event_type === "checkout_error")
+      expect(event).toMatchObject({
+        metadata: {
+          error_type: "http_error",
+          error_code: "PAYMENT_REFUSED",
+          status_code: 422,
+          request_payload: {
+            offer: "essencial",
+            customer: { email: "maria@example.com", cpf_cnpj: "••••3792" },
+          },
+          inputs: { customer: { name: "Maria Cliente", phone: "71999999999" } },
+        },
+      })
+    })
+  })
 })
 
 describe("PaymentResult", () => {

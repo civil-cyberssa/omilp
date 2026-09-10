@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatApiError } from "@/lib/client-api-error"
+import { trackCheckoutError } from "@/lib/checkout-error-analytics"
 import { cycleLabel, formatMoney } from "@/lib/commerce"
 import { trackAnalyticsEvent } from "@/lib/analytics"
 
@@ -177,6 +178,24 @@ function firstValidationMessage(errors: FieldErrors<Values>) {
   return candidates.find((message): message is string => typeof message === "string")
 }
 
+function validationFieldPaths(value: unknown, prefix = ""): string[] {
+  if (!value || typeof value !== "object") return []
+  return Object.entries(value as Record<string, unknown>).flatMap(([key, child]) => {
+    if (["message", "ref", "type", "types"].includes(key)) return []
+    const path = prefix ? `${prefix}.${key}` : key
+    if (child && typeof child === "object" && "message" in child) return [path]
+    return validationFieldPaths(child, path)
+  })
+}
+
+function responseErrorCode(payload: unknown) {
+  if (!payload || typeof payload !== "object") return "REQUEST_ERROR"
+  const error = (payload as { error?: unknown }).error
+  if (!error || typeof error !== "object") return "REQUEST_ERROR"
+  const code = (error as { code?: unknown }).code
+  return typeof code === "string" ? code : "REQUEST_ERROR"
+}
+
 function AddressFields({ prefix, form, loading, lookup }: { prefix: PersonPrefix; form: UseFormReturn<Values>; loading: boolean; lookup: (prefix: PersonPrefix, value?: string) => Promise<void> }) {
   const { register, setValue, formState: { errors } } = form
   const names = prefix === "customer" ? {
@@ -225,6 +244,7 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
   const [terminal, setTerminal] = useState(false)
   const [statusMessage, setStatusMessage] = useState("Aguardando confirmação do pagamento")
   const purchaseTracked = useRef(false)
+  const statusErrorTracked = useRef(false)
 
   useEffect(() => {
     let active = true
@@ -253,16 +273,55 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
             return
           }
           if (["CANCELED", "REFUNDED", "ERROR"].includes(data.status)) {
+            if (!statusErrorTracked.current) {
+              statusErrorTracked.current = true
+              void trackCheckoutError({
+                errorType: "http_error",
+                errorCode: `PAYMENT_${data.status}`,
+                message: "O pagamento não foi confirmado",
+                statusCode: response.status,
+                endpoint: "/api/checkout/status",
+                method: "GET",
+                offer: result.content_id,
+                billingType: result.billing_type,
+                responsePayload: data,
+              })
+            }
             setTerminal(true)
             setStatusMessage("O pagamento não foi confirmado")
             return
           }
         } else if ([401, 404].includes(response.status)) {
+          if (!statusErrorTracked.current) {
+            statusErrorTracked.current = true
+            void trackCheckoutError({
+              errorType: "http_error",
+              errorCode: response.status === 404 ? "CHECKOUT_NOT_FOUND" : "CHECKOUT_UNAUTHORIZED",
+              message: "Não foi possível localizar esta compra",
+              statusCode: response.status,
+              endpoint: "/api/checkout/status",
+              method: "GET",
+              offer: result.content_id,
+              billingType: result.billing_type,
+            })
+          }
           setTerminal(true)
           setStatusMessage("Não foi possível localizar esta compra")
           return
         }
-      } catch {
+      } catch (error) {
+        if (!statusErrorTracked.current) {
+          statusErrorTracked.current = true
+          void trackCheckoutError({
+            errorType: "network_error",
+            errorCode: error instanceof Error ? error.name : "STATUS_NETWORK_ERROR",
+            message: error instanceof Error ? error.message : "Falha de conexão ao consultar o pagamento",
+            endpoint: "/api/checkout/status",
+            method: "GET",
+            offer: result.content_id,
+            billingType: result.billing_type,
+          })
+        }
         // A próxima consulta tenta novamente; falhas transitórias não encerram o fluxo.
       }
       if (active) timer = setTimeout(pollStatus, 3000)
@@ -273,7 +332,7 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
       active = false
       if (timer) clearTimeout(timer)
     }
-  }, [result.content_id, result.currency, result.id, result.payment_id, result.value, router])
+  }, [result.billing_type, result.content_id, result.currency, result.id, result.payment_id, result.value, router])
 
   async function copyPix() {
     if (!result.pix?.payload) return
@@ -350,18 +409,34 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
     if (postalLookups.current[prefix] === postalCode) return
     postalLookups.current[prefix] = postalCode
     setLoadingPostal(prefix)
+    let statusCode: number | null = null
+    let responsePayload: unknown = null
     try {
       const response = await fetch(`/api/postal-code/${postalCode}`)
+      statusCode = response.status
       const data = await response.json() as AddressData | { error?: unknown }
+      responsePayload = data
       if (!response.ok || !("city_code" in data)) throw new Error()
       const currentPostalCode = String(getValues(`${prefix}.postal_code` as FieldPath<Values>) ?? "").replace(/\D/g, "")
       if (currentPostalCode !== postalCode) return
       for (const [field, value] of Object.entries(data as AddressData)) setValue(`${prefix}.${field}` as FieldPath<Values>, value, { shouldValidate: true })
-    } catch {
+    } catch (error) {
       const currentPostalCode = String(getValues(`${prefix}.postal_code` as FieldPath<Values>) ?? "").replace(/\D/g, "")
       if (currentPostalCode !== postalCode) return
       postalLookups.current[prefix] = null
       setValue(`${prefix}.city_code` as FieldPath<Values>, "", { shouldValidate: true })
+      void trackCheckoutError({
+        errorType: "postal_code_lookup",
+        errorCode: statusCode ? `HTTP_${statusCode}` : error instanceof Error ? error.name : "POSTAL_CODE_ERROR",
+        message: "Não foi possível consultar o CEP informado",
+        statusCode,
+        endpoint: "/api/postal-code/[postalCode]",
+        method: "GET",
+        offer: offer.slug,
+        checkoutStep,
+        responsePayload,
+        inputs: getValues(prefix),
+      })
       toast.error("Não foi possível consultar esse CEP. Confira e tente novamente.")
     } finally { setLoadingPostal((current) => current === prefix ? null : current) }
   }
@@ -414,6 +489,7 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
 
   async function submit(values: Values) {
     setSubmitError(null)
+    const requestPayload = collectPayment ? { ...values, offer: offer.slug } : { customer: values.customer }
     try {
       idempotencyKey.current ??= crypto.randomUUID()
       const response = await fetch(endpoint, {
@@ -422,17 +498,67 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
           "Content-Type": "application/json",
           "Idempotency-Key": idempotencyKey.current,
         },
-        body: JSON.stringify(collectPayment ? { ...values, offer: offer.slug } : { customer: values.customer }),
+        body: JSON.stringify(requestPayload),
       })
-      const data = await response.json().catch(() => ({ error: { status: response.status, code: "INVALID_RESPONSE", details: { message: "A rota retornou uma resposta inválida." } } }))
+      let data: Record<string, unknown>
+      try {
+        const parsed = await response.json()
+        data = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : { value: parsed }
+      } catch {
+        const message = `Resposta inválida recebida do checkout (HTTP ${response.status || 502}).`
+        setSubmitError(message)
+        void trackCheckoutError({
+          errorType: "invalid_response",
+          errorCode: "INVALID_RESPONSE",
+          message,
+          statusCode: response.status || 502,
+          endpoint,
+          method: "POST",
+          offer: offer.slug,
+          billingType: values.billing_type,
+          checkoutStep,
+          requestPayload,
+          inputs: values,
+        })
+        return void toast.error(message)
+      }
       if (!response.ok) {
         const message = formatApiError(response.status, data)
         setSubmitError(message)
+        void trackCheckoutError({
+          errorType: "http_error",
+          errorCode: responseErrorCode(data),
+          message,
+          statusCode: response.status,
+          endpoint,
+          method: "POST",
+          offer: offer.slug,
+          billingType: values.billing_type,
+          checkoutStep,
+          requestPayload,
+          responsePayload: data,
+          inputs: values,
+        })
         return void toast.error(message)
       }
-      if (collectPayment && values.billing_type === "PIX" && !data.pix?.payload) {
+      const pix = data.pix && typeof data.pix === "object" ? data.pix as Record<string, unknown> : null
+      if (collectPayment && values.billing_type === "PIX" && !pix?.payload) {
         const message = "Erro 502 · O Asaas não retornou o QR Code Pix."
         setSubmitError(message)
+        void trackCheckoutError({
+          errorType: "invalid_response",
+          errorCode: "PIX_PAYLOAD_MISSING",
+          message,
+          statusCode: response.status,
+          endpoint,
+          method: "POST",
+          offer: offer.slug,
+          billingType: values.billing_type,
+          checkoutStep,
+          requestPayload,
+          responsePayload: data,
+          inputs: values,
+        })
         return void toast.error(message)
       }
       resetField("credit_card")
@@ -446,9 +572,21 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
         currency: "BRL",
         content_id: offer.slug,
       })
-    } catch {
+    } catch (error) {
       const message = "Erro de conexão: não foi possível processar o pagamento. Não tente novamente antes de conferir seu pedido."
       setSubmitError(message)
+      void trackCheckoutError({
+        errorType: "network_error",
+        errorCode: error instanceof Error ? error.name : "NETWORK_ERROR",
+        message,
+        endpoint,
+        method: "POST",
+        offer: offer.slug,
+        billingType: values.billing_type,
+        checkoutStep,
+        requestPayload,
+        inputs: values,
+      })
       toast.error(message)
     }
   }
@@ -459,6 +597,18 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
       ? `${fieldMessage}. Revise os campos destacados.`
       : "Revise os campos destacados antes de finalizar o pagamento."
     setSubmitError(message)
+    void trackCheckoutError({
+      errorType: "form_validation",
+      errorCode: "FORM_VALIDATION_ERROR",
+      message,
+      endpoint,
+      method: "POST",
+      offer: offer.slug,
+      billingType,
+      checkoutStep,
+      inputs: getValues(),
+      validationFields: validationFieldPaths(validationErrors),
+    })
     toast.error(message)
   }
 
@@ -466,7 +616,20 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
     setSubmitError(null)
     const customerIsValid = await trigger("customer", { shouldFocus: true })
     if (!customerIsValid) {
-      setSubmitError("Revise seus dados de identificação e cobrança para continuar.")
+      const message = "Revise seus dados de identificação e cobrança para continuar."
+      setSubmitError(message)
+      void trackCheckoutError({
+        errorType: "form_validation",
+        errorCode: "CUSTOMER_VALIDATION_ERROR",
+        message,
+        endpoint,
+        method: "POST",
+        offer: offer.slug,
+        billingType,
+        checkoutStep,
+        inputs: getValues(),
+        validationFields: ["customer"],
+      })
       return
     }
     setCheckoutStep(2)

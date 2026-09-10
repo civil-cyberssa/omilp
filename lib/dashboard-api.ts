@@ -56,6 +56,7 @@ export type AnalyticsSummary = {
     offer_views: number
     offer_viewers: number
     offer_view_rate: number
+    checkout_errors?: number
     conversion_rate: number
   }
   daily: Array<{ date: string; views: number; conversions: number }>
@@ -65,6 +66,25 @@ export type AnalyticsSummary = {
   pages: Array<{ path: string; views: number; visitors: number; sessions: number }>
   sections: Array<{ path: string; section_id: string; section_name: string; views: number; visitors: number; sessions: number }>
   offers: Array<{ path: string; offer: string; offer_name: string; views: number; visitors: number; sessions: number }>
+  checkout_error_types?: Array<{ error_type: string; count: number }>
+  checkout_errors?: Array<{
+    id: string
+    path: string
+    error_type: string
+    error_code: string
+    message: string
+    status_code: number | null
+    endpoint: string
+    method: string
+    offer: string
+    billing_type: string
+    checkout_step: number | null
+    request_payload: unknown
+    response_payload: unknown
+    inputs: unknown
+    validation_fields: string[]
+    created_at: string
+  }>
 }
 
 export type DashboardBillingOverview = {

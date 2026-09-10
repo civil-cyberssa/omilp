@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
 import { format } from "date-fns"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -109,5 +109,42 @@ describe("calendário do dashboard", () => {
       is_completed: false,
     })
     expect(mutate).toHaveBeenCalled()
+  })
+
+  it("abre o pedido relacionado a partir dos detalhes do evento", async () => {
+    useSWR.mockReturnValue({
+      data: { count: 1, next: null, previous: null, results: [{ ...existingEvent, order: "order-1", related_label: "Pedido order-1" }] },
+      error: undefined,
+      isLoading: false,
+      mutate,
+    })
+
+    render(<CalendarOverview />)
+    fireEvent.click(screen.getAllByText("Reunião de alinhamento").at(-1)!)
+
+    expect(await screen.findByRole("link", { name: /ver pedido/i })).toHaveAttribute(
+      "href",
+      "/dashboard/pedidos/order-1",
+    )
+  })
+
+  it("exclui um evento após confirmação e atualiza o calendário", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 204 }),
+    )
+
+    render(<CalendarOverview />)
+    fireEvent.click(screen.getAllByText("Reunião de alinhamento").at(-1)!)
+    fireEvent.click(await screen.findByRole("button", { name: /excluir evento/i }))
+
+    const confirmation = await screen.findByRole("alertdialog")
+    fireEvent.click(within(confirmation).getByRole("button", { name: /excluir evento/i }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      "/api/backoffice/calendar-events/event-1",
+      expect.objectContaining({ method: "DELETE" }),
+    ))
+    expect(mutate).toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
   })
 })

@@ -13,6 +13,7 @@ import {
 } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import {
+  ArrowUpRight,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -20,13 +21,26 @@ import {
   Circle,
   Pencil,
   Plus,
+  Trash2,
   UserRound,
   WalletCards,
 } from "lucide-react"
+import Link from "next/link"
 import { useMemo, useState } from "react"
+import { toast } from "sonner"
 import useSWR from "swr"
 
 import { CalendarEventDialog } from "@/components/dashboard/calendar-event-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -46,6 +60,7 @@ import {
   type DashboardCalendarEvent,
   collectionResults,
   dashboardFetcher,
+  dashboardMutation,
 } from "@/lib/dashboard-api"
 import { cn } from "@/lib/utils"
 
@@ -67,6 +82,8 @@ export function CalendarOverview() {
   const [selectedEvent, setSelectedEvent] = useState<DashboardCalendarEvent | null>(null)
   const [editingEvent, setEditingEvent] = useState<DashboardCalendarEvent | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const gridStart = startOfWeek(startOfMonth(visibleMonth))
   const gridEnd = endOfWeek(endOfMonth(visibleMonth))
   const query = `/api/backoffice/calendar-events?start=${format(gridStart, "yyyy-MM-dd")}&end=${format(gridEnd, "yyyy-MM-dd")}`
@@ -115,6 +132,25 @@ export function CalendarOverview() {
     setVisibleMonth(startOfMonth(savedDate))
     await mutate()
     setSelectedEvent(event)
+  }
+
+  async function deleteSelectedEvent() {
+    if (!selectedEvent) return
+    setDeleting(true)
+    try {
+      await dashboardMutation(
+        `/api/backoffice/calendar-events/${encodeURIComponent(selectedEvent.id)}`,
+        { method: "DELETE" },
+      )
+      setDeleteConfirmOpen(false)
+      setSelectedEvent(null)
+      await mutate()
+      toast.success("Evento excluído com sucesso.")
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível excluir o evento.")
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -302,18 +338,33 @@ export function CalendarOverview() {
                 <div className="grid gap-2 rounded-xl border bg-muted/20 p-4 text-sm">
                   <div className="flex items-center gap-2">{selectedEvent.is_completed ? <CheckCircle2 className="h-4 w-4 text-emerald-600" /> : <Circle className="h-4 w-4 text-amber-500" />}<span>{selectedEvent.is_completed ? "Atividade concluída" : "Atividade pendente"}</span></div>
                   {selectedEvent.customer_name ? <div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-muted-foreground" /><span>{selectedEvent.customer_name}</span></div> : null}
-                  {selectedEvent.related_label ? <div className="flex items-center gap-2"><WalletCards className="h-4 w-4 text-muted-foreground" /><span>{selectedEvent.related_label}{selectedEvent.amount !== null ? ` · ${formatMoney(selectedEvent.amount)}` : ""}</span></div> : null}
+                  {selectedEvent.related_label ? <div className="flex flex-wrap items-center justify-between gap-3"><span className="flex min-w-0 items-center gap-2"><WalletCards className="h-4 w-4 shrink-0 text-muted-foreground" /><span>{selectedEvent.related_label}{selectedEvent.amount !== null ? ` · ${formatMoney(selectedEvent.amount)}` : ""}</span></span>{selectedEvent.order || selectedEvent.subscription ? <Button asChild type="button" variant="outline" size="sm" className="h-8"><Link href={selectedEvent.order ? `/dashboard/pedidos/${selectedEvent.order}` : `/dashboard/assinaturas/${selectedEvent.subscription}`}><span>{selectedEvent.order ? "Ver pedido" : "Ver assinatura"}</span><ArrowUpRight className="ml-1.5 h-3.5 w-3.5" /></Link></Button> : null}</div> : null}
                   {selectedEvent.created_by_name ? <p className="pt-1 text-xs text-muted-foreground">Criado por {selectedEvent.created_by_name}</p> : null}
                 </div>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setSelectedEvent(null)}>Fechar</Button>
-                <Button type="button" onClick={() => openEdit(selectedEvent)}><Pencil className="mr-2 h-4 w-4" />Editar evento</Button>
+              <DialogFooter className="gap-3 sm:justify-between">
+                <Button type="button" variant="destructive" onClick={() => setDeleteConfirmOpen(true)}><Trash2 className="mr-2 h-4 w-4" />Excluir evento</Button>
+                <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                  <Button type="button" variant="outline" onClick={() => setSelectedEvent(null)}>Fechar</Button>
+                  <Button type="button" onClick={() => openEdit(selectedEvent)}><Pencil className="mr-2 h-4 w-4" />Editar evento</Button>
+                </div>
               </DialogFooter>
             </>
           ) : null}
         </DialogContent>
       </Dialog>
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={(open) => { if (!deleting) setDeleteConfirmOpen(open) }}>
+        <AlertDialogContent className="omi-dashboard border-black/10 bg-white text-[#020617]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir este evento?</AlertDialogTitle>
+            <AlertDialogDescription>Esta ação remove o evento do calendário e não pode ser desfeita. O pedido ou a assinatura associados não serão excluídos.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction disabled={deleting} onClick={(event) => { event.preventDefault(); void deleteSelectedEvent() }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{deleting ? "Excluindo..." : "Excluir evento"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <CalendarEventDialog
         open={editorOpen}
         event={editingEvent}
