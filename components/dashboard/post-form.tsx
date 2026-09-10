@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Category, DashboardPost, dashboardFetcher, dashboardMutation } from "@/lib/dashboard-api"
+import { cn } from "@/lib/utils"
 
 const postSchema = z.object({
   title: z.string().trim().min(3, "Informe um título com pelo menos 3 caracteres."),
@@ -63,6 +64,7 @@ export default function PostForm({ post }: { post?: DashboardPost }) {
   const [categoryName, setCategoryName] = useState("")
   const [creatingCategory, setCreatingCategory] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [draggingCover, setDraggingCover] = useState(false)
   const form = useForm<PostValues>({
     resolver: zodResolver(postSchema),
     defaultValues: {
@@ -77,7 +79,7 @@ export default function PostForm({ post }: { post?: DashboardPost }) {
     if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview)
   }, [coverPreview])
 
-  const chooseCover = (file?: File) => {
+  const chooseCover = useCallback((file?: File) => {
     if (!file) return
     if (!file.type.startsWith("image/")) { setRequestError("Selecione um arquivo de imagem."); return }
     if (file.size > 5 * 1024 * 1024) { setRequestError("A capa deve ter no máximo 5 MB."); return }
@@ -86,7 +88,22 @@ export default function PostForm({ post }: { post?: DashboardPost }) {
     setCoverPreview(URL.createObjectURL(file))
     setRemoveCover(false)
     setRequestError("")
-  }
+  }, [coverPreview])
+
+  useEffect(() => {
+    const pasteCover = (event: ClipboardEvent) => {
+      const image = Array.from(event.clipboardData?.items ?? [])
+        .find((item) => item.kind === "file" && item.type.startsWith("image/"))
+        ?.getAsFile()
+
+      if (!image) return
+      event.preventDefault()
+      chooseCover(image)
+    }
+
+    window.addEventListener("paste", pasteCover)
+    return () => window.removeEventListener("paste", pasteCover)
+  }, [chooseCover])
 
   const clearCover = () => {
     if (coverPreview.startsWith("blob:")) URL.revokeObjectURL(coverPreview)
@@ -158,7 +175,41 @@ export default function PostForm({ post }: { post?: DashboardPost }) {
             <div className="space-y-2"><Label htmlFor="excerpt">Resumo</Label><Textarea id="excerpt" {...form.register("excerpt")} rows={4} placeholder="Uma introdução curta para as listagens e mecanismos de busca." /><FieldError message={form.formState.errors.excerpt?.message} /></div>
             <div className="space-y-2"><Label>Corpo do post</Label><Controller control={form.control} name="content" render={({ field }) => <RichTextEditor value={field.value} onChange={field.onChange} disabled={form.formState.isSubmitting} />} /><FieldError message={form.formState.errors.content?.message} /></div>
           </CardContent></Card>
-          <Card><CardHeader><CardTitle>Imagem de capa</CardTitle></CardHeader><CardContent>{coverPreview ? <div className="relative aspect-[16/8] overflow-hidden rounded-lg border bg-muted"><Image src={coverPreview} alt="Prévia da capa" fill unoptimized className="object-cover" /><Button type="button" size="icon" variant="secondary" onClick={clearCover} className="absolute right-3 top-3" aria-label="Remover capa"><X className="h-4 w-4" /></Button></div> : <label className="flex aspect-[16/7] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30 text-center transition-colors hover:bg-muted/60"><ImagePlus className="h-8 w-8 text-muted-foreground" /><span className="mt-3 text-sm font-medium">Enviar imagem de capa</span><span className="mt-1 text-xs text-muted-foreground">JPG, PNG ou WebP, até 5 MB</span><Input type="file" accept="image/*" className="sr-only" onChange={(event) => chooseCover(event.target.files?.[0])} /></label>}</CardContent></Card>
+          <Card>
+            <CardHeader><CardTitle>Imagem de capa</CardTitle></CardHeader>
+            <CardContent
+              onDragEnter={(event) => { event.preventDefault(); setDraggingCover(true) }}
+              onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = "copy"; setDraggingCover(true) }}
+              onDragLeave={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDraggingCover(false)
+              }}
+              onDrop={(event) => {
+                event.preventDefault()
+                setDraggingCover(false)
+                chooseCover(event.dataTransfer.files[0])
+              }}
+            >
+              {coverPreview ? (
+                <div className={cn("rounded-lg transition", draggingCover && "ring-2 ring-[#4338FF] ring-offset-2")}>
+                  <div className="relative aspect-[16/8] overflow-hidden rounded-lg border bg-muted">
+                    <Image src={coverPreview} alt="Prévia da capa" fill unoptimized className="object-cover" />
+                    <Button type="button" size="icon" variant="secondary" onClick={clearCover} className="absolute right-3 top-3" aria-label="Remover capa"><X className="h-4 w-4" /></Button>
+                  </div>
+                  <p className="mt-2 text-center text-xs text-muted-foreground">Arraste outra imagem aqui ou cole com Ctrl/Cmd+V para substituir.</p>
+                </div>
+              ) : (
+                <label className={cn(
+                  "flex aspect-[16/7] cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30 text-center transition-all hover:bg-muted/60",
+                  draggingCover && "scale-[1.01] border-[#4338FF] bg-[#4338FF]/[.06] shadow-[0_0_0_4px_rgba(67,56,255,.08)]",
+                )}>
+                  <ImagePlus className={cn("h-8 w-8 text-muted-foreground transition", draggingCover && "text-[#4338FF]")} />
+                  <span className="mt-3 text-sm font-medium">Arraste, cole ou clique para enviar</span>
+                  <span className="mt-1 text-xs text-muted-foreground">JPG, PNG ou WebP, até 5 MB · Ctrl/Cmd+V</span>
+                  <Input aria-label="Selecionar imagem de capa" type="file" accept="image/*" className="sr-only" onChange={(event) => chooseCover(event.target.files?.[0])} />
+                </label>
+              )}
+            </CardContent>
+          </Card>
           <Card><CardHeader><CardTitle>SEO</CardTitle></CardHeader><CardContent className="space-y-5"><div className="space-y-2"><Label htmlFor="seo_title">Título SEO</Label><Input id="seo_title" {...form.register("seo_title")} /><FieldError message={form.formState.errors.seo_title?.message} /></div><div className="space-y-2"><Label htmlFor="seo_description">Descrição SEO</Label><Textarea id="seo_description" {...form.register("seo_description")} rows={3} /><FieldError message={form.formState.errors.seo_description?.message} /></div></CardContent></Card>
         </div>
         <div className="space-y-6">

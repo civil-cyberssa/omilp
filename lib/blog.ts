@@ -23,14 +23,49 @@ export type BlogPost = {
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
 
 export async function getBlogPosts(): Promise<BlogPost[]> {
+  const firstPage = new URL(`${apiUrl}/blog/posts/`)
+  firstPage.searchParams.set("page_size", "100")
+  const posts = new Map<string, BlogPost>()
+  const visitedPages = new Set<string>()
+  let nextPage: string | null = firstPage.toString()
+
   try {
-    const response = await fetch(`${apiUrl}/blog/posts/`, { cache: "no-store" })
-    if (!response.ok) return []
-    const data: BlogPost[] | { results: BlogPost[] } = await response.json()
-    return Array.isArray(data) ? data : data.results
+    while (nextPage) {
+      const pageUrl: URL = new URL(nextPage, firstPage)
+      if (
+        pageUrl.origin !== firstPage.origin
+        || !pageUrl.pathname.startsWith(firstPage.pathname)
+        || visitedPages.has(pageUrl.toString())
+      ) break
+
+      visitedPages.add(pageUrl.toString())
+      const response: Response = await fetch(pageUrl, { cache: "no-store" })
+      if (!response.ok) break
+      const data: BlogPost[] | { results: BlogPost[]; next?: string | null } = await response.json()
+      const pagePosts = Array.isArray(data) ? data : data.results
+      pagePosts.forEach((post) => posts.set(post.id, post))
+      nextPage = Array.isArray(data) ? null : (data.next ?? null)
+    }
+
+    return [...posts.values()]
   } catch {
-    return []
+    return [...posts.values()]
   }
+}
+
+function publishedTime(post: Pick<BlogPost, "published_at">) {
+  const timestamp = new Date(post.published_at).getTime()
+  return Number.isFinite(timestamp) ? timestamp : 0
+}
+
+export function sortBlogPostsByNewest(posts: BlogPost[]) {
+  return [...posts].sort((left, right) => publishedTime(right) - publishedTime(left))
+}
+
+export function getMostReadBlogPost(posts: BlogPost[]) {
+  return [...posts].sort(
+    (left, right) => right.view_count - left.view_count || publishedTime(right) - publishedTime(left),
+  )[0] ?? null
 }
 
 export async function getBlogPost(slug: string): Promise<BlogPost | null> {

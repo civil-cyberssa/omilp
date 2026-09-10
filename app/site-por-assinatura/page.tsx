@@ -1,20 +1,22 @@
 import type { Metadata } from "next"
 import Image from "next/image"
-import Link from "next/link"
 import {
   ArrowDown,
   ArrowRight,
+  BadgeCheck,
   Check,
-  Gauge,
-  Search,
-  ShieldCheck,
+  LockKeyhole,
+  MessageCircle,
   Sparkles,
+  UsersRound,
 } from "lucide-react"
 
+import { ConversionLink } from "@/components/conversion-link"
+import { BillingCycleSelector } from "@/components/billing-cycle-selector"
 import Footer from "@/components/footer"
 import Navbar from "@/components/navbar"
 import { OfferPrice } from "@/components/offer-price"
-import { getOffers } from "@/lib/commerce"
+import { formatMoney, formatOfferFeature, getOffers, type Offer } from "@/lib/commerce"
 
 const siteUrl = "https://omitech.com.br"
 const pageUrl = `${siteUrl}/site-por-assinatura`
@@ -22,7 +24,7 @@ const pageUrl = `${siteUrl}/site-por-assinatura`
 export const metadata: Metadata = {
   title: "Site por Assinatura: Planos para Empresas",
   description:
-    "Tenha um site por assinatura profissional, responsivo e otimizado para o Google. Conheça os planos da Omi e contrate online.",
+    "Tenha um site profissional por assinatura, com criação, publicação e suporte contínuo. Compare os planos da Omi e contrate online.",
   keywords: [
     "site por assinatura",
     "site profissional por assinatura",
@@ -34,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Site por assinatura para sua empresa | Omi Tecnologia",
     description:
-      "Site profissional, responsivo e pronto para crescer. Escolha seu plano e contrate online.",
+      "Criação, publicação e suporte para o site da sua empresa em um plano mensal.",
     url: pageUrl,
     type: "website",
     locale: "pt_BR",
@@ -56,9 +58,9 @@ export const metadata: Metadata = {
 }
 
 const benefits = [
-  { icon: Gauge, label: "Rápido e responsivo" },
-  { icon: Search, label: "Estrutura preparada para SEO" },
-  { icon: ShieldCheck, label: "Suporte contínuo" },
+  { icon: BadgeCheck, label: "7 anos de experiência" },
+  { icon: UsersRound, label: "Mais de 20 clientes atendidos" },
+  { icon: LockKeyhole, label: "Pagamento seguro via Asaas" },
 ]
 
 const steps = [
@@ -84,11 +86,94 @@ const faq = [
       "Sim. Todas as páginas são responsivas e adaptadas para celulares, tablets e computadores.",
   },
   {
+    question: "Preciso entender de tecnologia?",
+    answer:
+      "Não. Você envia as informações da empresa pelo briefing e a Omi cuida do design, do desenvolvimento e da publicação.",
+  },
+  {
+    question: "Como funcionam as alterações mensais?",
+    answer:
+      "A quantidade incluída aparece em cada plano. Depois da publicação, você acompanha o projeto e envia as solicitações pela área do cliente.",
+  },
+  {
+    question: "Quais formas de pagamento estão disponíveis?",
+    answer:
+      "A contratação online aceita Pix e cartão de crédito. O processamento financeiro é realizado com segurança pelo Asaas.",
+  },
+  {
     question: "Como começa a criação do site?",
     answer:
       "Depois da contratação, você preenche um briefing com as informações da empresa. A equipe usa esse material para definir conteúdo, visual e estrutura do projeto.",
   },
 ]
+
+const whatsappHref = "https://wa.me/5571992997191?text=Ol%C3%A1%2C%20quero%20entender%20qual%20plano%20de%20site%20%C3%A9%20ideal%20para%20minha%20empresa."
+
+function offerFit(isFeatured: boolean) {
+  return isFeatured
+    ? "Para empresas com mais serviços, conteúdo e objetivos de crescimento."
+    : "Para profissionais e pequenos negócios que precisam começar bem."
+}
+
+function PageOfferGrid({ offers }: { offers: Offer[] }) {
+  return (
+    <div className={`mt-12 grid gap-5 ${offers.length > 2 ? "lg:grid-cols-3" : "mx-auto max-w-4xl md:grid-cols-2"}`}>
+      {offers.map((offer) => (
+        <article
+          key={offer.id}
+          data-analytics-offer={offer.slug}
+          data-analytics-offer-name={offer.name}
+          className={`relative flex flex-col rounded-[26px] border p-7 md:p-8 ${
+            offer.is_featured
+              ? "border-[#6f66ff]/65 bg-[linear-gradient(155deg,rgba(67,56,255,.22),rgba(255,255,255,.055))] shadow-[0_30px_90px_rgba(67,56,255,.18)]"
+              : "border-white/12 bg-white/[.035]"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-[10px] font-bold uppercase tracking-[.22em] text-white/42">
+              {offer.cycle === "YEARLY" ? "Assinatura anual" : "Assinatura mensal"}
+            </p>
+            {offer.is_featured ? <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#17152f]">Recomendado</span> : null}
+          </div>
+          <h3 className="mt-7 text-2xl font-semibold tracking-[-.03em]">{offer.name}</h3>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-[.14em] text-[#aab7ff]">Ideal para</p>
+          <p className="mt-2 min-h-12 text-sm leading-6 text-white/68">{offerFit(offer.is_featured)}</p>
+          <p className="mt-3 text-sm leading-6 text-white/48">{offer.short_description}</p>
+          <OfferPrice offer={offer} />
+          <ul className="mt-7 flex-1 space-y-3 border-t border-white/10 pt-6">
+            {offer.features.map((feature) => (
+              <li key={feature} className="flex gap-3 text-sm leading-5 text-white/68">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#8ea8ff]" aria-hidden="true" />
+                {formatOfferFeature(feature)}
+              </li>
+            ))}
+          </ul>
+          <ConversionLink
+            href={`/contratar/${offer.slug}`}
+            event="cta_click"
+            eventData={{ placement: "subscription_plan", offer: offer.slug, value: Number(offer.price) }}
+            aria-label={`Contratar ${offer.name}`}
+            className={`mt-8 inline-flex h-13 items-center justify-between rounded-full px-5 py-3.5 text-sm font-semibold transition ${
+              offer.is_featured ? "bg-white text-[#0b1020] hover:bg-[#dfe5ff]" : "bg-[#4338ff] text-white hover:bg-[#564cff]"
+            }`}
+          >
+            Começar com {offer.name} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </ConversionLink>
+          <ConversionLink
+            href={`${whatsappHref}%20Tenho%20interesse%20no%20plano%20${encodeURIComponent(offer.name)}.`}
+            event="whatsapp_click"
+            eventData={{ placement: "subscription_plan", offer: offer.slug }}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 text-center text-xs font-medium text-white/52 underline decoration-white/20 underline-offset-4 transition hover:text-white"
+          >
+            Tenho dúvidas sobre este plano
+          </ConversionLink>
+        </article>
+      ))}
+    </div>
+  )
+}
 
 function jsonLd(value: object) {
   return JSON.stringify(value).replace(/</g, "\\u003c")
@@ -96,6 +181,17 @@ function jsonLd(value: object) {
 
 export default async function SitePorAssinaturaPage() {
   const offers = await getOffers()
+  const visibleOffers = offers.filter(
+    (offer) => offer.is_active
+      && offer.kind === "SUBSCRIPTION"
+      && ["MONTHLY", "YEARLY"].includes(offer.cycle),
+  )
+  const monthlyOffers = visibleOffers.filter((offer) => offer.cycle === "MONTHLY")
+  const yearlyOffers = visibleOffers.filter((offer) => offer.cycle === "YEARLY")
+  const entryOffer = visibleOffers.find(
+    (offer) => offer.kind === "SUBSCRIPTION" && offer.slug === "essencial",
+  )
+  const startingPrice = entryOffer ? formatMoney(entryOffer.price) : null
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -119,7 +215,7 @@ export default async function SitePorAssinaturaPage() {
           "Criação de sites profissionais, responsivos e preparados para mecanismos de busca em planos recorrentes.",
         provider: { "@id": `${siteUrl}/#organization` },
         areaServed: { "@type": "Country", name: "Brasil" },
-        offers: offers.map((offer) => ({
+        offers: visibleOffers.map((offer) => ({
           "@type": "Offer",
           name: offer.name,
           description: offer.short_description,
@@ -158,31 +254,45 @@ export default async function SitePorAssinaturaPage() {
 
         <div className="container mx-auto max-w-6xl">
           <div className="mx-auto max-w-5xl text-center">
-            <h1 className="text-5xl font-semibold leading-[.98] tracking-[-.055em] sm:text-6xl lg:text-[5.8rem]">
-              Site por assinatura para sua empresa crescer.
+            <p className="mb-6 text-xs font-bold uppercase tracking-[.22em] text-[#aab7ff]">
+              Criação, publicação e suporte em um só plano
+            </p>
+            <h1 className="text-[2.65rem] font-semibold leading-[.98] tracking-[-.055em] sm:text-6xl lg:text-[5.8rem]">
+              {startingPrice
+                ? <>Seu site profissional a partir de <span className="text-[#aab7ff]">{startingPrice}</span> por mês.</>
+                : "Seu site profissional sem um grande investimento inicial."}
             </h1>
-            <p className="mx-auto mt-7 max-w-xl text-base leading-7 text-white/58 md:text-lg">
-              Design profissional, tecnologia e suporte contínuo em um plano simples, com contratação online.
+            <p className="mx-auto mt-7 max-w-2xl text-base leading-7 text-white/64 md:text-lg">
+              A Omi cria, publica e cuida da parte técnica. Você apresenta sua empresa com profissionalismo e conta com suporte contínuo.
             </p>
             <div className="mt-10 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link
+              <ConversionLink
                 href="#planos"
+                event="cta_click"
+                eventData={{ placement: "subscription_hero", action: "view_plans" }}
                 className="inline-flex h-14 items-center justify-center gap-3 rounded-full bg-white px-7 text-sm font-semibold text-[#080b16] transition hover:bg-[#dfe5ff]"
               >
-                Ver planos e preços <ArrowDown className="h-4 w-4" aria-hidden="true" />
-              </Link>
-              <Link
-                href="#projetos"
+                Escolher meu plano <ArrowDown className="h-4 w-4" aria-hidden="true" />
+              </ConversionLink>
+              <ConversionLink
+                href={whatsappHref}
+                event="whatsapp_click"
+                eventData={{ placement: "subscription_hero" }}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex h-14 items-center justify-center rounded-full border border-white/16 px-7 text-sm font-medium text-white/78 transition hover:border-white/35 hover:bg-white/[.06] hover:text-white"
               >
-                Ver projetos
-              </Link>
+                <MessageCircle className="mr-2 h-4 w-4" aria-hidden="true" /> Tirar dúvidas no WhatsApp
+              </ConversionLink>
             </div>
+            <p className="mt-6 text-xs leading-5 text-white/42">
+              Contratação online · Site responsivo · Acompanhamento pela área do cliente
+            </p>
           </div>
         </div>
       </section>
 
-      <section aria-label="Benefícios do site por assinatura" className="border-b border-[#11182a]/10 bg-white px-6">
+      <section aria-label="Experiência e segurança da Omi" className="border-b border-[#11182a]/10 bg-white px-6">
         <div className="container mx-auto grid max-w-6xl divide-y divide-[#11182a]/10 md:grid-cols-3 md:divide-x md:divide-y-0">
           {benefits.map(({ icon: Icon, label }) => (
             <div key={label} className="flex items-center justify-center gap-3 py-6 text-sm font-medium text-[#222b41] md:px-6">
@@ -193,15 +303,41 @@ export default async function SitePorAssinaturaPage() {
         </div>
       </section>
 
+      <section id="planos" className="relative overflow-hidden bg-[#050711] px-6 py-24 text-white md:py-32">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(67,56,255,.22),transparent_32%)]" />
+        <div className="container relative mx-auto max-w-6xl">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[.22em] text-[#8ea8ff]">Planos de site por assinatura</p>
+            <h2 className="mt-5 text-4xl font-semibold tracking-[-.045em] md:text-6xl">Escolha o plano para o seu momento.</h2>
+            <p className="mx-auto mt-5 max-w-2xl leading-7 text-white/58">Compare o que está incluído, contrate online e envie o briefing. A Omi cuida da criação até a publicação.</p>
+          </div>
+
+          {visibleOffers.length ? (
+            <BillingCycleSelector
+              className="mt-10"
+              hasMonthly={monthlyOffers.length > 0}
+              hasYearly={yearlyOffers.length > 0}
+              monthly={<PageOfferGrid offers={monthlyOffers} />}
+              yearly={<PageOfferGrid offers={yearlyOffers} />}
+            />
+          ) : (
+            <div className="mx-auto mt-14 max-w-xl rounded-[24px] border border-white/12 bg-white/[.04] p-8 text-center">
+              <p className="text-white/65">As ofertas estão sendo atualizadas.</p>
+              <a href="https://wa.me/5571992997191" target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0b1020]">Consultar planos</a>
+            </div>
+          )}
+        </div>
+      </section>
+
       <section id="projetos" className="bg-white px-6 py-24 md:py-32">
         <div className="container mx-auto max-w-6xl">
           <div className="grid gap-8 md:grid-cols-[.8fr_1.2fr] md:items-end">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[.22em] text-[#4338ff]">Sites que já saíram do papel</p>
-              <h2 className="mt-4 text-4xl font-semibold tracking-[-.045em] md:text-6xl">Seu negócio merece presença.</h2>
+              <p className="text-xs font-bold uppercase tracking-[.22em] text-[#4338ff]">Experiência comprovada</p>
+              <h2 className="mt-4 text-4xl font-semibold tracking-[-.045em] md:text-6xl">Veja o que já construímos.</h2>
             </div>
             <p className="max-w-lg text-base leading-7 text-[#5a6275] md:justify-self-end">
-              Criamos experiências claras, responsivas e alinhadas à identidade de cada marca.
+              Projetos reais para marcas que precisavam apresentar melhor seus serviços e transformar ideias em experiências digitais.
             </p>
           </div>
 
@@ -231,68 +367,10 @@ export default async function SitePorAssinaturaPage() {
               </figure>
               <div className="flex min-h-[220px] flex-col justify-between rounded-[26px] bg-[#eff1ff] p-7">
                 <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#4338ff] text-white"><Sparkles className="h-4 w-4" aria-hidden="true" /></span>
-                <p className="max-w-xs text-2xl font-semibold leading-tight tracking-[-.035em] text-[#11182a]">A próxima experiência pode ser a sua.</p>
+                <p className="max-w-xs text-2xl font-semibold leading-tight tracking-[-.035em] text-[#11182a]">Seu site pode ser o próximo projeto da Omi.</p>
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section id="planos" className="relative overflow-hidden bg-[#050711] px-6 py-24 text-white md:py-32">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(67,56,255,.22),transparent_32%)]" />
-        <div className="container relative mx-auto max-w-6xl">
-          <div className="mx-auto max-w-3xl text-center">
-            <p className="text-xs font-bold uppercase tracking-[.22em] text-[#8ea8ff]">Planos de site por assinatura</p>
-            <h2 className="mt-5 text-4xl font-semibold tracking-[-.045em] md:text-6xl">Escolha seu ponto de partida.</h2>
-            <p className="mx-auto mt-5 max-w-xl leading-7 text-white/52">Selecione uma oferta, pague online e envie o briefing do projeto.</p>
-          </div>
-
-          {offers.length ? (
-            <div className={`mt-14 grid gap-5 ${offers.length > 2 ? "lg:grid-cols-3" : "mx-auto max-w-4xl md:grid-cols-2"}`}>
-              {offers.map((offer) => (
-                <article
-                  key={offer.id}
-                  className={`relative flex flex-col rounded-[26px] border p-7 md:p-8 ${
-                    offer.is_featured
-                      ? "border-[#6f66ff]/65 bg-[linear-gradient(155deg,rgba(67,56,255,.22),rgba(255,255,255,.055))] shadow-[0_30px_90px_rgba(67,56,255,.18)]"
-                      : "border-white/12 bg-white/[.035]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="text-[10px] font-bold uppercase tracking-[.22em] text-white/42">
-                      {offer.kind === "SUBSCRIPTION" ? "Assinatura" : "Projeto único"}
-                    </p>
-                    {offer.is_featured ? <span className="rounded-full bg-white px-3 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#17152f]">Mais escolhido</span> : null}
-                  </div>
-                  <h3 className="mt-7 text-2xl font-semibold tracking-[-.03em]">{offer.name}</h3>
-                  <p className="mt-3 min-h-12 text-sm leading-6 text-white/52">{offer.short_description}</p>
-                  <OfferPrice offer={offer} />
-                  <ul className="mt-7 flex-1 space-y-3 border-t border-white/10 pt-6">
-                    {offer.features.map((feature) => (
-                      <li key={feature} className="flex gap-3 text-sm leading-5 text-white/68">
-                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#8ea8ff]" aria-hidden="true" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href={`/contratar/${offer.slug}`}
-                    aria-label={`Contratar ${offer.name}`}
-                    className={`mt-8 inline-flex h-13 items-center justify-between rounded-full px-5 py-3.5 text-sm font-semibold transition ${
-                      offer.is_featured ? "bg-white text-[#0b1020] hover:bg-[#dfe5ff]" : "bg-[#4338ff] text-white hover:bg-[#564cff]"
-                    }`}
-                  >
-                    Contratar este plano <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="mx-auto mt-14 max-w-xl rounded-[24px] border border-white/12 bg-white/[.04] p-8 text-center">
-              <p className="text-white/65">As ofertas estão sendo atualizadas.</p>
-              <a href="https://wa.me/5571992997191" target="_blank" rel="noopener noreferrer" className="mt-5 inline-flex rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0b1020]">Consultar planos</a>
-            </div>
-          )}
         </div>
       </section>
 
@@ -334,6 +412,19 @@ export default async function SitePorAssinaturaPage() {
                 <p className="max-w-2xl pb-7 pr-10 text-sm leading-7 text-[#60687b]">{item.answer}</p>
               </details>
             ))}
+            <div className="py-7">
+              <p className="text-sm font-semibold text-[#11182a]">Ainda não sabe qual plano escolher?</p>
+              <ConversionLink
+                href={whatsappHref}
+                event="whatsapp_click"
+                eventData={{ placement: "subscription_faq" }}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#4338ff] underline decoration-[#4338ff]/25 underline-offset-4"
+              >
+                Conversar com a Omi <MessageCircle className="h-4 w-4" aria-hidden="true" />
+              </ConversionLink>
+            </div>
           </div>
         </div>
       </section>
@@ -344,11 +435,16 @@ export default async function SitePorAssinaturaPage() {
           <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-xs font-bold uppercase tracking-[.22em] text-white/58">Seu novo site começa aqui</p>
-              <h2 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight tracking-[-.045em] md:text-6xl">Escolha um plano. A gente cuida do resto.</h2>
+              <h2 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight tracking-[-.045em] md:text-6xl">Apresente sua empresa com um site profissional.</h2>
             </div>
-            <Link href="#planos" className="inline-flex h-14 shrink-0 items-center justify-center gap-3 rounded-full bg-white px-7 text-sm font-semibold text-[#17152f] transition hover:bg-[#eef0ff]">
-              Ver ofertas <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
+            <ConversionLink
+              href="#planos"
+              event="cta_click"
+              eventData={{ placement: "subscription_final", action: "view_plans" }}
+              className="inline-flex h-14 shrink-0 items-center justify-center gap-3 rounded-full bg-white px-7 text-sm font-semibold text-[#17152f] transition hover:bg-[#eef0ff]"
+            >
+              Escolher meu plano <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </ConversionLink>
           </div>
         </div>
       </section>

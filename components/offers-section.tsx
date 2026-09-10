@@ -1,12 +1,44 @@
 import { ArrowRight, Check } from "lucide-react"
 import Link from "next/link"
 
+import { BillingCycleSelector } from "@/components/billing-cycle-selector"
 import { OfferPrice } from "@/components/offer-price"
-import { getOffers } from "@/lib/commerce"
+import { getOffers, type Offer } from "@/lib/commerce"
+
+function OfferGrid({ offers }: { offers: Offer[] }) {
+  if (!offers.length) {
+    return <p className="mt-12 text-center text-sm text-white/55">Nenhum plano disponível neste ciclo no momento.</p>
+  }
+
+  return (
+    <div className="mt-12 grid gap-5 lg:grid-cols-3">
+      {offers.map((offer) => (
+        <article data-analytics-offer={offer.slug} data-analytics-offer-name={offer.name} key={offer.id} className={`relative flex flex-col border p-7 ${offer.is_featured ? "border-[#7C2AE8] bg-[linear-gradient(145deg,rgba(21,94,239,.15),rgba(124,42,232,.12),rgba(208,0,184,.09))] shadow-[0_24px_90px_rgba(67,56,255,.18)]" : "border-white/12 bg-white/[.025]"}`}>
+          {offer.is_featured ? <span className="absolute right-5 top-5 text-[10px] font-bold uppercase tracking-[.2em] text-[#D6D3FF]">Recomendado</span> : null}
+          <p className="pr-24 text-xs font-semibold uppercase tracking-[.2em] text-white/45">{offer.cycle === "YEARLY" ? "Assinatura anual" : "Assinatura mensal"}</p>
+          <h3 className="mt-5 text-2xl font-semibold">{offer.name}</h3>
+          <p className="mt-3 min-h-12 text-sm leading-6 text-white/55">{offer.short_description}</p>
+          <OfferPrice offer={offer} />
+          <ul className="mt-7 flex-1 space-y-3 border-t border-white/10 pt-6">
+            {offer.features.map((feature) => <li key={feature} className="flex gap-3 text-sm text-white/70"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#8EA8FF]" />{feature}</li>)}
+          </ul>
+          <Link href={`/contratar/${offer.slug}`} className="mt-8 inline-flex h-12 items-center justify-between rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] px-5 text-sm font-semibold text-white transition hover:brightness-110">Contratar agora <ArrowRight className="h-4 w-4" /></Link>
+        </article>
+      ))}
+    </div>
+  )
+}
 
 export default async function OffersSection() {
-  const offers = await getOffers()
+  const offers = (await getOffers()).filter(
+    (offer) => offer.is_active
+      && offer.kind === "SUBSCRIPTION"
+      && ["MONTHLY", "YEARLY"].includes(offer.cycle),
+  )
   if (!offers.length) return null
+  const monthlyOffers = offers.filter((offer) => offer.cycle === "MONTHLY")
+  const yearlyOffers = offers.filter((offer) => offer.cycle === "YEARLY")
+
   return (
     <section id="offers" className="relative overflow-hidden bg-[#020617] px-6 py-24 text-[#F8FAFC] md:py-32">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_10%,rgba(21,94,239,.2),transparent_28%),radial-gradient(circle_at_85%_85%,rgba(208,0,184,.15),transparent_28%)]" />
@@ -21,21 +53,13 @@ export default async function OffersSection() {
             </Link>
           </div>
         </div>
-        <div className="mt-12 grid gap-5 lg:grid-cols-3">
-          {offers.map((offer) => (
-            <article key={offer.id} className={`relative flex flex-col border p-7 ${offer.is_featured ? "border-[#7C2AE8] bg-[linear-gradient(145deg,rgba(21,94,239,.15),rgba(124,42,232,.12),rgba(208,0,184,.09))] shadow-[0_24px_90px_rgba(67,56,255,.18)]" : "border-white/12 bg-white/[.025]"}`}>
-              {offer.is_featured ? <span className="absolute right-5 top-5 text-[10px] font-bold uppercase tracking-[.2em] text-[#D6D3FF]">Recomendado</span> : null}
-              <p className="pr-24 text-xs font-semibold uppercase tracking-[.2em] text-white/45">{offer.kind === "SUBSCRIPTION" ? "Assinatura" : "Projeto único"}</p>
-              <h3 className="mt-5 text-2xl font-semibold">{offer.name}</h3>
-              <p className="mt-3 min-h-12 text-sm leading-6 text-white/55">{offer.short_description}</p>
-              <OfferPrice offer={offer} />
-              <ul className="mt-7 flex-1 space-y-3 border-t border-white/10 pt-6">
-                {offer.features.map((feature) => <li key={feature} className="flex gap-3 text-sm text-white/70"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#8EA8FF]" />{feature}</li>)}
-              </ul>
-              <Link href={`/contratar/${offer.slug}`} className="mt-8 inline-flex h-12 items-center justify-between rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] px-5 text-sm font-semibold text-white transition hover:brightness-110">Contratar agora <ArrowRight className="h-4 w-4" /></Link>
-            </article>
-          ))}
-        </div>
+        <BillingCycleSelector
+          className="mt-10"
+          hasMonthly={monthlyOffers.length > 0}
+          hasYearly={yearlyOffers.length > 0}
+          monthly={<OfferGrid offers={monthlyOffers} />}
+          yearly={<OfferGrid offers={yearlyOffers} />}
+        />
       </div>
     </section>
   )

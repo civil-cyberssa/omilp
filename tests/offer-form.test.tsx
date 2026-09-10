@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   refresh: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
+  dashboardFetcher: vi.fn(),
 }))
 
 vi.mock("next/navigation", () => ({
@@ -19,7 +20,7 @@ vi.mock("sonner", () => ({
 
 vi.mock("@/lib/dashboard-api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/dashboard-api")>("@/lib/dashboard-api")
-  return { ...actual, dashboardMutation: mocks.dashboardMutation }
+  return { ...actual, dashboardFetcher: mocks.dashboardFetcher, dashboardMutation: mocks.dashboardMutation }
 })
 
 import { OfferForm } from "@/components/dashboard/offer-form"
@@ -87,6 +88,62 @@ describe("OfferForm", () => {
     fireEvent.change(price, { target: { value: "123456" } })
 
     expect(price).toHaveValue("R$\u00a01.234,56")
+  })
+
+  it("preenche uma nova oferta a partir de outra oferta selecionada", async () => {
+    const sourceOffer = {
+      ...offer,
+      id: "offer-source",
+      name: "Plano anual",
+      slug: "plano-anual",
+      short_description: "Resumo copiado",
+      description: "Descrição copiada",
+      price: "1200.00",
+      cycle: "YEARLY",
+      features: ["Hospedagem", "Suporte"],
+      is_featured: true,
+      is_active: false,
+      sort_order: 7,
+      monthly_change_request_limit: 5,
+    }
+    mocks.dashboardFetcher.mockResolvedValue({ count: 1, next: null, previous: null, results: [sourceOffer] })
+    render(<OfferForm />)
+
+    fireEvent.click(screen.getByRole("switch", { name: "Preencher oferta a partir de outra" }))
+    expect(await screen.findByRole("combobox", { name: "Oferta a copiar" })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Oferta a copiar" }))
+    fireEvent.click(await screen.findByRole("option", { name: "Plano anual · Assinatura" }))
+
+    expect(screen.getByLabelText("Nome")).toHaveValue("Plano anual")
+    expect(screen.getByLabelText("Slug")).toHaveValue("plano-anual")
+    expect(screen.getByLabelText("Resumo")).toHaveValue("Resumo copiado")
+    expect(screen.getByLabelText("Descrição")).toHaveValue("Descrição copiada")
+    expect(screen.getByLabelText("Preço")).toHaveValue("R$\u00a01.200,00")
+    expect(screen.getByLabelText("Ordem")).toHaveValue(7)
+    expect(screen.getByLabelText("Alterações permitidas por mês")).toHaveValue(5)
+    expect(screen.getByLabelText("Benefícios (um por linha)")).toHaveValue("Hospedagem\nSuporte")
+    expect(screen.getByRole("combobox", { name: "Tipo" })).toHaveTextContent("Assinatura")
+    expect(screen.getByRole("combobox", { name: "Ciclo" })).toHaveTextContent("Anual")
+    expect(screen.getByRole("switch", { name: "Oferta ativa" })).not.toBeChecked()
+    expect(screen.getByRole("switch", { name: "Em destaque" })).toBeChecked()
+
+    mocks.dashboardMutation.mockResolvedValue({ ...sourceOffer, id: "new-offer" })
+    fireEvent.submit(screen.getByRole("button", { name: "Salvar oferta" }).closest("form")!)
+
+    await waitFor(() => expect(mocks.dashboardMutation).toHaveBeenCalledWith(
+      "/api/backoffice/offers",
+      expect.objectContaining({ method: "POST" }),
+    ))
+    expect(JSON.parse(String(mocks.dashboardMutation.mock.calls[0][1].body))).toEqual(expect.objectContaining({
+      name: "Plano anual",
+      slug: "plano-anual",
+      price: "1200.00",
+      cycle: "YEARLY",
+      features: ["Hospedagem", "Suporte"],
+      is_active: false,
+      is_featured: true,
+    }))
   })
 
   it("exibe erro quando a oferta não é atualizada", async () => {

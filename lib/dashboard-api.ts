@@ -53,12 +53,18 @@ export type AnalyticsSummary = {
     sessions: number
     conversions: number
     whatsapp_clicks: number
+    offer_views: number
+    offer_viewers: number
+    offer_view_rate: number
     conversion_rate: number
   }
   daily: Array<{ date: string; views: number; conversions: number }>
   hourly: Array<{ weekday: number; hour: number; views: number }>
   sources: Array<{ label: string; views: number; visitors: number }>
   campaigns: Array<{ label: string; views: number; visitors: number }>
+  pages: Array<{ path: string; views: number; visitors: number; sessions: number }>
+  sections: Array<{ path: string; section_id: string; section_name: string; views: number; visitors: number; sessions: number }>
+  offers: Array<{ path: string; offer: string; offer_name: string; views: number; visitors: number; sessions: number }>
 }
 
 export type DashboardBillingOverview = {

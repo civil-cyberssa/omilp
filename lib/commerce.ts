@@ -42,6 +42,34 @@ export function formatMoney(value: string | number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value))
 }
 
+const offerFeatureLabels: Record<string, string> = {
+  analytics: "Google Analytics configurado",
+  "domínio incluso": "Domínio incluído",
+  "search console": "Google Search Console configurado",
+  ssl: "Certificado SSL incluído",
+  whatsapp: "Botão de WhatsApp integrado",
+}
+
+export function formatOfferFeature(feature: string) {
+  const normalized = feature.trim().toLocaleLowerCase("pt-BR")
+  const knownLabel = offerFeatureLabels[normalized]
+  if (knownLabel) return knownLabel
+
+  return feature.replace(
+    /alterações por mês gratuitas/i,
+    "solicitações de alteração incluídas por mês",
+  )
+}
+
+export function getOfferDescription(offer: Pick<Offer, "description" | "short_description" | "features">) {
+  const description = offer.description || offer.short_description
+  const advertisesAdvancedSeo = offer.features.some((feature) => /seo avançado/i.test(feature))
+
+  return advertisesAdvancedSeo
+    ? description.replace(/seo básico/i, "estrutura técnica para SEO")
+    : description
+}
+
 export const cycleLabel: Record<string, string> = {
   WEEKLY: "semana", BIWEEKLY: "quinzena", MONTHLY: "mês", BIMONTHLY: "bimestre",
   QUARTERLY: "trimestre", SEMIANNUALLY: "semestre", YEARLY: "ano",

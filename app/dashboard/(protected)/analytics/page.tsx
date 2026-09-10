@@ -3,7 +3,7 @@
 import { useState } from "react"
 import useSWR from "swr"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
-import { BarChart3, Eye, MousePointerClick, Send, Users } from "lucide-react"
+import { BarChart3, Eye, LayoutPanelTop, MousePointerClick, Route, Send, Tags, Users } from "lucide-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartConfig, ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -91,19 +91,22 @@ export default function AnalyticsPage() {
     { label: "Conversões", value: formatNumber(data.totals.conversions), icon: Send },
     { label: "Taxa de conversão", value: `${data.totals.conversion_rate.toLocaleString("pt-BR")}%`, icon: BarChart3 },
     { label: "Cliques no WhatsApp", value: formatNumber(data.totals.whatsapp_clicks), icon: MousePointerClick },
+    { label: "Visualizações de ofertas", value: formatNumber(data.totals.offer_views ?? 0), icon: Tags },
+    { label: "Visitantes que viram ofertas", value: formatNumber(data.totals.offer_viewers ?? 0), icon: Users },
+    { label: "Alcance das ofertas", value: `${(data.totals.offer_view_rate ?? 0).toLocaleString("pt-BR")}%`, icon: LayoutPanelTop },
   ] : []
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-7">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div><p className="text-sm font-medium text-[#155EEF]">Aquisição</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Analytics</h1><p className="mt-2 text-muted-foreground">Acessos, origem das campanhas e conversões da página principal.</p></div>
+        <div><p className="text-sm font-medium text-[#155EEF]">Aquisição</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Analytics</h1><p className="mt-2 text-muted-foreground">Jornada por páginas e seções, exposição às ofertas e conversões.</p></div>
         <Select value={days} onValueChange={setDays}><SelectTrigger aria-label="Período das métricas" className="w-44 bg-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="1">Hoje</SelectItem><SelectItem value="7">Últimos 7 dias</SelectItem><SelectItem value="30">Últimos 30 dias</SelectItem><SelectItem value="90">Últimos 90 dias</SelectItem></SelectContent></Select>
       </div>
 
       {error ? <Card><CardContent className="py-14 text-center text-sm text-destructive">Não foi possível carregar as métricas.</CardContent></Card> : null}
-      {isLoading ? <><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">{[1, 2, 3, 4, 5].map((item) => <Skeleton key={item} className="h-32" />)}</div><div className="grid gap-6 xl:grid-cols-2"><Skeleton className="h-[390px]" /><Skeleton className="h-[390px]" /></div></> : null}
+      {isLoading ? <><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 8 }, (_, item) => <Skeleton key={item} className="h-32" />)}</div><div className="grid gap-6 xl:grid-cols-2"><Skeleton className="h-[390px]" /><Skeleton className="h-[390px]" /></div></> : null}
       {data ? <>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {metrics.map(({ label, value, icon: Icon }) => <Card key={label} className="border-[#4338FF]/10 shadow-[0_12px_40px_rgba(67,56,255,.06)]"><CardContent className="p-5"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#4338FF]/10 text-[#4338FF]"><Icon className="h-4 w-4" /></span><p className="mt-5 text-2xl font-semibold">{value}</p><p className="mt-1 text-xs text-muted-foreground">{label}</p></CardContent></Card>)}
         </div>
 
@@ -126,6 +129,28 @@ export default function AnalyticsPage() {
           </Card>
           <AccessHeatmap rows={data.hourly} periodDays={data.period_days} />
         </div>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <Card className="overflow-hidden border-[#4338FF]/10">
+            <CardHeader><CardTitle className="flex items-center gap-2"><Route className="h-4 w-4 text-[#4338FF]" />Páginas visitadas</CardTitle><CardDescription>Rotas com maior volume de visualizações no período.</CardDescription></CardHeader>
+            <CardContent className="p-0">
+              {(data.pages ?? []).length ? <Table><TableHeader><TableRow><TableHead>Página</TableHead><TableHead className="text-right">Views</TableHead><TableHead className="text-right">Visitantes</TableHead><TableHead className="text-right">Sessões</TableHead></TableRow></TableHeader><TableBody>{data.pages.map((page) => <TableRow key={page.path}><TableCell className="max-w-64 truncate font-mono text-xs" title={page.path}>{page.path}</TableCell><TableCell className="text-right font-medium">{formatNumber(page.views)}</TableCell><TableCell className="text-right">{formatNumber(page.visitors)}</TableCell><TableCell className="text-right">{formatNumber(page.sessions)}</TableCell></TableRow>)}</TableBody></Table> : <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhuma página visualizada no período.</p>}
+            </CardContent>
+          </Card>
+          <Card className="overflow-hidden border-[#4338FF]/10">
+            <CardHeader><CardTitle className="flex items-center gap-2"><LayoutPanelTop className="h-4 w-4 text-[#4338FF]" />Seções visualizadas</CardTitle><CardDescription>Blocos da página que chegaram à área visível do visitante.</CardDescription></CardHeader>
+            <CardContent className="p-0">
+              {(data.sections ?? []).length ? <Table><TableHeader><TableRow><TableHead>Seção</TableHead><TableHead>Página</TableHead><TableHead className="text-right">Views</TableHead><TableHead className="text-right">Visitantes</TableHead></TableRow></TableHeader><TableBody>{data.sections.map((section) => <TableRow key={`${section.path}:${section.section_id}`}><TableCell><p className="max-w-56 truncate font-medium" title={section.section_name}>{section.section_name}</p><p className="font-mono text-[10px] text-muted-foreground">#{section.section_id}</p></TableCell><TableCell className="max-w-48 truncate font-mono text-xs" title={section.path}>{section.path}</TableCell><TableCell className="text-right font-medium">{formatNumber(section.views)}</TableCell><TableCell className="text-right">{formatNumber(section.visitors)}</TableCell></TableRow>)}</TableBody></Table> : <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhuma seção visualizada no período.</p>}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="overflow-hidden border-[#D000B8]/15 shadow-[0_16px_50px_rgba(208,0,184,.06)]">
+          <CardHeader><CardTitle className="flex items-center gap-2"><Tags className="h-4 w-4 text-[#D000B8]" />Visualização das ofertas</CardTitle><CardDescription>Cada registro confirma que o card da oferta entrou na área visível. Alcance considera sessões com ao menos uma oferta vista.</CardDescription></CardHeader>
+          <CardContent className="p-0">
+            {(data.offers ?? []).length ? <Table><TableHeader><TableRow><TableHead>Oferta</TableHead><TableHead>Página</TableHead><TableHead className="text-right">Visualizações</TableHead><TableHead className="text-right">Visitantes</TableHead><TableHead className="text-right">Sessões</TableHead></TableRow></TableHeader><TableBody>{data.offers.map((offer) => <TableRow key={`${offer.path}:${offer.offer}`}><TableCell><p className="font-medium">{offer.offer_name}</p><p className="font-mono text-[10px] text-muted-foreground">{offer.offer}</p></TableCell><TableCell className="max-w-64 truncate font-mono text-xs" title={offer.path}>{offer.path}</TableCell><TableCell className="text-right font-semibold text-[#D000B8]">{formatNumber(offer.views)}</TableCell><TableCell className="text-right">{formatNumber(offer.visitors)}</TableCell><TableCell className="text-right">{formatNumber(offer.sessions)}</TableCell></TableRow>)}</TableBody></Table> : <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhuma oferta foi visualizada no período.</p>}
+          </CardContent>
+        </Card>
 
         <div className="grid gap-6 lg:grid-cols-2">
           <Card className="overflow-hidden border-[#4338FF]/10"><CardHeader><CardTitle>Origens</CardTitle></CardHeader><CardContent className="p-0">{data.sources.length ? <Table><TableHeader><TableRow><TableHead>UTM source</TableHead><TableHead className="text-right">Acessos</TableHead><TableHead className="text-right">Visitantes</TableHead></TableRow></TableHeader><TableBody>{data.sources.map((source) => <TableRow key={source.label}><TableCell className="font-medium">{source.label || "Direto"}</TableCell><TableCell className="text-right">{formatNumber(source.views)}</TableCell><TableCell className="text-right">{formatNumber(source.visitors)}</TableCell></TableRow>)}</TableBody></Table> : <p className="px-6 py-12 text-center text-sm text-muted-foreground">Nenhuma origem registrada.</p>}</CardContent></Card>

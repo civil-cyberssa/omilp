@@ -1,8 +1,8 @@
 "use client"
 
-import { trackMetaPixelEvent, type MetaEventType } from "@/lib/meta-pixel"
+import { isMetaEventType, trackMetaPixelEvent, type MetaEventType } from "@/lib/meta-pixel"
 
-export type AnalyticsEventType = MetaEventType
+export type AnalyticsEventType = MetaEventType | "section_view" | "offer_view"
 
 type GtagFunction = (
   command: "event",
@@ -93,7 +93,7 @@ export async function trackAnalyticsEvent(
 ) {
   if (typeof window === "undefined" || navigator.doNotTrack === "1") return
   const attribution = campaignAttribution()
-  trackMetaPixelEvent(eventType, eventId, metadata)
+  if (isMetaEventType(eventType)) trackMetaPixelEvent(eventType, eventId, metadata)
   trackGoogleAnalyticsEvent(eventType, eventId, metadata)
   try {
     await fetch("/api/analytics/events", {

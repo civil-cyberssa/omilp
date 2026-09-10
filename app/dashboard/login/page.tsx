@@ -8,13 +8,16 @@ import { ArrowRight, Eye, EyeOff, LockKeyhole } from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+
 export default function DashboardLoginPage() {
   const router = useRouter()
   const [error, setError] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [keepConnected, setKeepConnected] = useState(true)
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -35,6 +38,10 @@ export default function DashboardLoginPage() {
       if (!result?.ok || result.error) {
         setError("E-mail ou senha inválidos.")
         return
+      }
+      if (!keepConnected) {
+        const response = await fetch("/api/auth/session-persistence", { method: "POST" })
+        if (!response.ok) throw new Error("Não foi possível ajustar a duração da sessão.")
       }
       router.replace(destination)
       router.refresh()
@@ -62,6 +69,17 @@ export default function DashboardLoginPage() {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <Checkbox
+              id="keep-connected"
+              checked={keepConnected}
+              onCheckedChange={(checked) => setKeepConnected(checked === true)}
+              className="border-white/30 bg-white/[.04] data-[state=checked]:border-[#5B5CF6] data-[state=checked]:bg-[#5B5CF6] data-[state=checked]:text-white"
+            />
+            <Label htmlFor="keep-connected" className="cursor-pointer text-sm font-normal text-white/70">
+              Manter conectado
+            </Label>
           </div>
           <Button type="submit" disabled={submitting} className="h-11 w-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#7C2AE8] text-white shadow-[0_12px_35px_rgba(67,56,255,.28)] hover:brightness-110">{submitting ? "Entrando..." : "Entrar"}<ArrowRight className="ml-2 h-4 w-4" /></Button>
         </form>

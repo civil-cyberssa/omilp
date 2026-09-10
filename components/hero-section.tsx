@@ -4,6 +4,7 @@ import { useEffect, useRef, Suspense, useState } from "react"
 import { Canvas } from "@react-three/fiber"
 import { Float, OrbitControls } from "@react-three/drei"
 import { ArrowUpRight, ChevronDown, MessageCircle, Send } from "lucide-react"
+import { ConversionLink } from "@/components/conversion-link"
 import OmiModel from "./omi-model"
 
 function hasWebGLSupport() {
@@ -194,6 +195,15 @@ export default function HeroSection() {
                 </div>
               </div>
             </div>
+            <ConversionLink
+              href="/site-por-assinatura"
+              event="cta_click"
+              eventData={{ placement: "hero", destination: "site_subscription" }}
+              className="group mx-auto inline-flex w-full max-w-sm items-center justify-center gap-3 rounded-full border border-white/15 bg-white/[0.06] px-8 py-3 font-medium text-white backdrop-blur-sm transition-all hover:border-cyan-200/35 hover:bg-white/[0.11] hover:shadow-[0_12px_40px_rgba(34,211,238,0.12)] sm:mx-0 sm:w-auto"
+            >
+              Sites por assinatura
+              <ArrowUpRight className="h-4 w-4 text-cyan-200/70 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden="true" />
+            </ConversionLink>
             {/* <button
               aria-label="Assista à demonstração das soluções digitais da Omi"
               className="px-8 py-3 rounded-full bg-white/10 backdrop-blur-sm text-white font-medium hover:bg-white/20 transition-all"

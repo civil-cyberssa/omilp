@@ -98,6 +98,21 @@ describe("checkoutSchema", () => {
 })
 
 describe("CheckoutForm", () => {
+  it("registra o início do checkout ao exibir o formulário", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ accepted: true }))
+
+    render(createElement(CheckoutForm, { offer: { slug: "profissional", cycle: "MONTHLY", price: "89.90" } }))
+
+    await waitFor(() => {
+      const analyticsCall = fetchMock.mock.calls.find(([input]) => input === "/api/analytics/events")
+      expect(analyticsCall).toBeDefined()
+      expect(JSON.parse(String(analyticsCall?.[1]?.body))).toMatchObject({
+        event_type: "initiate_checkout",
+        metadata: { value: 89.9, currency: "BRL", content_ids: ["profissional"] },
+      })
+    })
+  })
+
   it("normaliza telefone e consulta endereço quando os campos recebem autofill", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({
       postal_code: "40020000", street: "Rua Chile", address_complement: "",
@@ -153,13 +168,15 @@ describe("CheckoutForm", () => {
     fireEvent.blur(screen.getByLabelText("CEP"))
     await waitFor(() => expect((document.querySelector('input[name="customer.city_code"]') as HTMLInputElement).value).toBe("2927408"))
 
+    fireEvent.click(screen.getByRole("button", { name: /continuar para pagamento/i }))
+    await screen.findByRole("group", { name: "Forma de pagamento" })
     fireEvent.click(screen.getByLabelText("Cartão de crédito"))
     fill("Número do cartão", "4444444444444444")
     fill("Nome impresso no cartão", "MARIA CLIENTE")
     fill("Mês", "12")
     fill("Ano", "2030")
     fill("CVV", "123")
-    fireEvent.click(screen.getByRole("button", { name: /finalizar pagamento/i }))
+    fireEvent.click(screen.getByRole("button", { name: /assinar por/i }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/checkout", expect.objectContaining({ method: "POST" })))
     const checkoutCall = fetchMock.mock.calls.find(([input]) => input === "/api/checkout")!
@@ -175,6 +192,24 @@ describe("CheckoutForm", () => {
 })
 
 describe("PaymentResult", () => {
+  it("explica que o primeiro Pix autoriza as cobranças mensais automáticas", () => {
+    render(createElement(PaymentResult, { result: {
+      resource_type: "subscription",
+      id: "subscription-1",
+      status: "PENDING",
+      billing_type: "PIX",
+      payment_status: "PENDING",
+      pix: {
+        encoded_image: "base64-image",
+        payload: "pix-automatico",
+        automatic: true,
+      },
+    } }))
+
+    expect(screen.getByText("Pix Automático")).toBeInTheDocument()
+    expect(screen.getByText(/autoriza as próximas cobranças mensais automáticas/i)).toBeInTheDocument()
+  })
+
   it("consulta o status a cada 3 segundos e abre o briefing após confirmação", async () => {
     vi.useFakeTimers()
     let statusCalls = 0

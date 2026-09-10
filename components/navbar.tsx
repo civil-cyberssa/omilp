@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Menu, X } from "lucide-react"
 
 const navLinks = [
@@ -15,8 +16,12 @@ const navLinks = [
 ]
 
 export default function Navbar() {
+  const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const isSubscriptionJourney = pathname === "/site-por-assinatura" || pathname.startsWith("/contratar/")
+  const primaryHref = pathname === "/site-por-assinatura" ? "#planos" : isSubscriptionJourney ? "/site-por-assinatura#planos" : "/area-cliente"
+  const primaryLabel = isSubscriptionJourney ? "Ver planos" : "Área do cliente"
 
   useEffect(() => {
     const handleScroll = () => {
@@ -56,10 +61,10 @@ export default function Navbar() {
 
           <div className="flex items-center">
             <Link
-              href="/area-cliente"
+              href={primaryHref}
               className="hidden md:inline-flex px-5 py-2 text-sm font-medium rounded-full bg-gradient-to-r from-blue-500 to-purple-600 hover:opacity-90 transition-opacity"
             >
-              Área do cliente
+              {primaryLabel}
             </Link>
             <button
               type="button"
@@ -92,11 +97,11 @@ export default function Navbar() {
                 </Link>
               ))}
               <Link
-                href="/area-cliente"
+                href={primaryHref}
                 onClick={() => setMenuOpen(false)}
                 className="mt-1 rounded-xl bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] px-4 py-3 text-sm font-semibold text-white"
               >
-                Área do cliente
+                {primaryLabel}
               </Link>
             </div>
           </div>

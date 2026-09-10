@@ -54,6 +54,10 @@ describe("HeroSection", () => {
     expect(screen.getByText("Software sob medida")).toBeInTheDocument()
     expect(screen.getByText("para empresas que crescem")).toBeInTheDocument()
     expect(screen.getByText("Solicitar orçamento")).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Sites por assinatura" })).toHaveAttribute(
+      "href",
+      "/site-por-assinatura",
+    )
     // expect(screen.getByText("Ver soluções")).toBeInTheDocument()
 
     // Verifica se o Canvas foi renderizado

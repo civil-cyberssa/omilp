@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatApiError } from "@/lib/client-api-error"
-import { formatMoney } from "@/lib/commerce"
+import { cycleLabel, formatMoney } from "@/lib/commerce"
 import { trackAnalyticsEvent } from "@/lib/analytics"
 
 const BRAZILIAN_DOCUMENT_PATTERN = /^(?:\d{3}\.\d{3}\.\d{3}-\d{2}|\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})$/
@@ -110,7 +110,7 @@ export const checkoutSchema = z.object({
 type Values = z.infer<typeof checkoutSchema>
 export type CheckoutCustomer = z.infer<typeof personSchema>
 type PersonPrefix = "customer" | "cardholder"
-type Offer = { slug: string; cycle: string; price: string }
+type Offer = { slug: string; cycle: string; price: string; kind?: "SUBSCRIPTION" | "ONE_TIME" }
 type AddressData = { postal_code: string; street: string; address_complement: string; neighborhood: string; city: string; city_code: string; state: string; country: string }
 type CheckoutResult = {
   resource_type: "order" | "subscription"
@@ -121,7 +121,7 @@ type CheckoutResult = {
   payment_id?: string
   subscription_id?: string
   installment_count?: number
-  pix?: { encoded_image: string; payload: string; expiration_date?: string | null }
+  pix?: { encoded_image: string; payload: string; expiration_date?: string | null; automatic?: boolean }
   value?: number
   currency?: string
   content_id?: string
@@ -219,6 +219,7 @@ function AddressFields({ prefix, form, loading, lookup }: { prefix: PersonPrefix
 export function PaymentResult({ result }: { result: CheckoutResult }) {
   const router = useRouter()
   const isPix = result.billing_type === "PIX" && result.pix
+  const isAutomaticPix = result.pix?.automatic === true
   const qrSource = result.pix?.encoded_image.startsWith("data:") ? result.pix.encoded_image : `data:image/png;base64,${result.pix?.encoded_image}`
   const [confirmed, setConfirmed] = useState(false)
   const [terminal, setTerminal] = useState(false)
@@ -285,7 +286,7 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
   }
 
   if (isPix) return <div className="space-y-7 text-center">
-    <div><p className="text-xs font-semibold uppercase tracking-[.22em] text-[#8EA8FF]">Pagamento Pix</p><h3 className="mt-3 text-3xl font-semibold tracking-[-.03em]">Escaneie para pagar</h3><p className="mt-2 text-sm text-white/50">O pedido será atualizado automaticamente após a confirmação.</p></div>
+    <div><p className="text-xs font-semibold uppercase tracking-[.22em] text-[#8EA8FF]">{isAutomaticPix ? "Pix Automático" : "Pagamento Pix"}</p><h3 className="mt-3 text-3xl font-semibold tracking-[-.03em]">Escaneie para pagar</h3><p className="mx-auto mt-2 max-w-md text-sm leading-6 text-white/50">{isAutomaticPix ? "Este primeiro pagamento também autoriza as próximas cobranças mensais automáticas." : "O pedido será atualizado automaticamente após a confirmação."}</p></div>
     <div className="mx-auto w-fit rounded-2xl bg-white p-4 shadow-[0_0_60px_rgba(67,56,255,.28)]"><Image src={qrSource} alt="QR Code Pix do pedido" width={240} height={240} unoptimized /></div>
     <div className="space-y-2 text-left"><Label htmlFor="pix-payload">Pix copia e cola</Label><div className="flex gap-2"><Input id="pix-payload" readOnly value={result.pix?.payload ?? ""} className="h-12 border-white/15 bg-white/[.04] font-mono text-xs text-white" /><Button type="button" variant="outline" onClick={copyPix} className="h-12 border-white/15 bg-white/[.06] text-white hover:bg-white/10"><Copy className="h-4 w-4" /><span className="sr-only">Copiar código Pix</span></Button></div></div>
     <div className={`flex items-center justify-center gap-2 rounded-full border px-4 py-3 text-sm ${confirmed ? "border-[#596BFF]/40 bg-[#4338FF]/15 text-[#C9CEFF]" : terminal ? "border-pink-400/25 bg-pink-400/[.07] text-pink-200" : "border-white/10 bg-white/[.035] text-white/55"}`}>{confirmed ? <CheckCircle2 className="h-4 w-4" /> : terminal ? <LockKeyhole className="h-4 w-4" /> : <Loader2 className="h-4 w-4 animate-spin" />}{statusMessage}</div>
@@ -303,15 +304,31 @@ export function PaymentResult({ result }: { result: CheckoutResult }) {
 export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustomer, collectPayment = true }: { offer: Offer; endpoint?: string; initialCustomer?: Partial<CheckoutCustomer>; collectPayment?: boolean }) {
   const router = useRouter()
   const form = useForm<Values>({ resolver: zodResolver(checkoutSchema), defaultValues: { billing_type: "PIX", cardholder_same_as_customer: true, installment_count: 1, customer: { country: "BR", city_code: "", ...initialCustomer } } })
-  const { register, handleSubmit, watch, getValues, setValue, resetField, unregister, formState: { errors, isSubmitting } } = form
+  const { register, handleSubmit, watch, getValues, setValue, resetField, trigger, unregister, formState: { errors, isSubmitting } } = form
   const billingType = watch("billing_type")
   const sameCardholder = watch("cardholder_same_as_customer")
   const [loadingPostal, setLoadingPostal] = useState<PersonPrefix | null>(null)
   const [result, setResult] = useState<CheckoutResult | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [checkoutStep, setCheckoutStep] = useState<1 | 2>(1)
+  const formRef = useRef<HTMLFormElement | null>(null)
   const idempotencyKey = useRef<string | null>(null)
+  const checkoutTracked = useRef(false)
   const postalLookups = useRef<Record<PersonPrefix, string | null>>({ customer: null, cardholder: null })
   const maximumInstallments = offer.cycle === "YEARLY" ? 12 : offer.cycle === "SEMIANNUALLY" ? 6 : 1
+  const isSubscription = offer.kind !== "ONE_TIME"
+  const usesAutomaticPix = isSubscription && offer.cycle === "MONTHLY"
+
+  useEffect(() => {
+    if (!collectPayment || checkoutTracked.current) return
+    checkoutTracked.current = true
+    void trackAnalyticsEvent("initiate_checkout", {
+      value: Number(offer.price),
+      currency: "BRL",
+      content_ids: [offer.slug],
+      content_type: "product",
+    })
+  }, [collectPayment, offer.price, offer.slug])
 
   useEffect(() => {
     if (billingType === "PIX") {
@@ -423,12 +440,6 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
         router.replace("/briefing")
         return
       }
-      void trackAnalyticsEvent("initiate_checkout", {
-        value: Number(offer.price),
-        currency: "BRL",
-        content_ids: [offer.slug],
-        content_type: "product",
-      })
       setResult({
         ...(data as CheckoutResult),
         value: Number(offer.price),
@@ -451,9 +462,25 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
     toast.error(message)
   }
 
+  async function continueToPayment() {
+    setSubmitError(null)
+    const customerIsValid = await trigger("customer", { shouldFocus: true })
+    if (!customerIsValid) {
+      setSubmitError("Revise seus dados de identificação e cobrança para continuar.")
+      return
+    }
+    setCheckoutStep(2)
+    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }))
+  }
+
   if (result) return <PaymentResult result={result} />
 
-  return <form onSubmit={handleSubmit(submit, invalid)} className="space-y-6" autoComplete="on">
+  return <form ref={formRef} onSubmit={handleSubmit(submit, invalid)} className="scroll-mt-28 space-y-6" autoComplete="on">
+    {collectPayment ? <div className="grid grid-cols-2 gap-2" aria-label={`Etapa ${checkoutStep} de 2`}>
+      {([1, 2] as const).map((step) => <div key={step} className={`rounded-full px-4 py-2 text-center text-xs font-semibold ${checkoutStep === step ? "bg-[#4338FF] text-white" : checkoutStep > step ? "bg-[#4338FF]/20 text-[#BFC6FF]" : "bg-white/[.05] text-white/35"}`}>{step}. {step === 1 ? "Seus dados" : "Pagamento"}</div>)}
+    </div> : null}
+
+    {!collectPayment || checkoutStep === 1 ? <>
     <div className="grid gap-4 md:grid-cols-2">
       <div className="space-y-2"><Label htmlFor="customer.name">Nome completo</Label><Input id="customer.name" autoComplete="name" placeholder="Como devemos chamar você?" className={inputClass} {...register("customer.name")} /><Message>{errors.customer?.name?.message}</Message></div>
       <div className="space-y-2"><Label htmlFor="customer.email">E-mail</Label><Input id="customer.email" autoComplete="email" type="email" placeholder="voce@empresa.com" className={inputClass} {...register("customer.email")} /><Message>{errors.customer?.email?.message}</Message></div>
@@ -462,10 +489,13 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
       <div className="space-y-2 md:col-span-2"><Label htmlFor="customer.company">Empresa (opcional)</Label><Input id="customer.company" autoComplete="organization" placeholder="Nome da sua empresa" className={inputClass} {...register("customer.company")} /></div>
     </div>
     <AddressFields prefix="customer" form={form} loading={loadingPostal === "customer"} lookup={lookupPostalCode} />
+    </> : null}
 
-    {collectPayment ? <><fieldset className="space-y-3"><legend className="text-sm font-medium text-white/80">Forma de pagamento</legend><div className="grid gap-3 sm:grid-cols-2">
-      {([{ value: "PIX", label: "Pix", icon: QrCode }, { value: "CREDIT_CARD", label: "Cartão de crédito", icon: CreditCard }] as const).map(({ value, label, icon: Icon }) => <label key={value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition ${billingType === value ? "border-[#596BFF] bg-[#4338FF]/15 shadow-[0_0_24px_rgba(67,56,255,.12)]" : "border-white/10 bg-white/[.025] hover:border-white/20"}`}><input type="radio" value={value} className="sr-only" {...register("billing_type")} onChange={(event) => { register("billing_type").onChange(event); setValue("installment_count", 1) }} /><Icon className="h-5 w-5 text-[#9AA8FF]" /><span className="font-medium">{label}</span></label>)}
+    {collectPayment && checkoutStep === 2 ? <><fieldset className="space-y-3"><legend className="text-sm font-medium text-white/80">Forma de pagamento</legend><div className="grid gap-3 sm:grid-cols-2">
+      {([{ value: "PIX", label: usesAutomaticPix ? "Pix Automático" : "Pix", icon: QrCode }, { value: "CREDIT_CARD", label: "Cartão de crédito", icon: CreditCard }] as const).map(({ value, label, icon: Icon }) => <label key={value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition ${billingType === value ? "border-[#596BFF] bg-[#4338FF]/15 shadow-[0_0_24px_rgba(67,56,255,.12)]" : "border-white/10 bg-white/[.025] hover:border-white/20"}`}><input type="radio" value={value} className="sr-only" {...register("billing_type")} onChange={(event) => { register("billing_type").onChange(event); setValue("installment_count", 1) }} /><Icon className="h-5 w-5 text-[#9AA8FF]" /><span className="font-medium">{label}</span></label>)}
     </div></fieldset>
+
+    {billingType === "PIX" && usesAutomaticPix ? <div className="flex gap-3 rounded-xl border border-[#596BFF]/25 bg-[#4338FF]/[.07] p-4 text-left"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#9AA8FF]" /><div><p className="text-sm font-medium text-white/85">Autorização no primeiro Pix</p><p className="mt-1 text-xs leading-5 text-white/50">Ao pagar o QR Code, você autoriza o Asaas a realizar as próximas cobranças mensais automaticamente. A assinatura pode ser cancelada para interromper cobranças futuras.</p></div></div> : null}
 
     {billingType === "CREDIT_CARD" ? <div className="space-y-5 rounded-xl border border-[#4338FF]/30 bg-[#4338FF]/[.07] p-4 md:p-5">
       <div className="flex items-center justify-between gap-4"><div><p className="font-medium">Dados do cartão</p><p className="mt-1 text-xs text-white/45">Processamento seguro realizado pelo Asaas.</p></div><ShieldCheck className="h-6 w-6 text-[#8EA8FF]" /></div>
@@ -491,7 +521,13 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
     </div> : null}</> : null}
 
     {submitError ? <p role="alert" className="rounded-xl border border-pink-400/25 bg-pink-400/[.07] px-4 py-3 text-sm text-pink-200">{submitError}</p> : null}
-    <Button type="submit" disabled={isSubmitting} className="h-12 w-full rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] text-white hover:brightness-110">{isSubmitting ? <><Loader2 className="animate-spin" />Processando com segurança</> : collectPayment ? <>Finalizar pagamento <ArrowRight /></> : <>Salvar dados e preencher briefing <ArrowRight /></>}</Button>
-    {collectPayment ? <p className="flex items-center justify-center gap-2 text-xs text-white/38"><LockKeyhole className="h-3.5 w-3.5" />Seus dados de cartão não são armazenados pela Omi.</p> : null}
+    {collectPayment && checkoutStep === 1 ? <Button type="button" onClick={continueToPayment} className="h-12 w-full rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] text-white hover:brightness-110">Continuar para pagamento <ArrowRight /></Button> : <>
+      {collectPayment ? <p className="text-center text-xs leading-5 text-white/45">{usesAutomaticPix && billingType === "PIX" ? "Pix Automático mensal. O primeiro pagamento confirma sua autorização para as próximas cobranças." : isSubscription ? `Assinatura com cobrança a cada ${cycleLabel[offer.cycle] ?? "período"}. Pagamento processado pelo Asaas.` : "Pagamento único processado pelo Asaas."}</p> : null}
+      <div className="flex flex-col-reverse gap-3 sm:flex-row">
+        {collectPayment ? <Button type="button" variant="outline" onClick={() => setCheckoutStep(1)} className="h-12 border-white/15 bg-white/[.04] text-white hover:bg-white/10">Voltar aos dados</Button> : null}
+        <Button type="submit" disabled={isSubmitting} className="h-12 flex-1 rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] text-white hover:brightness-110">{isSubmitting ? <><Loader2 className="animate-spin" />Processando com segurança</> : collectPayment ? <>{isSubscription ? "Assinar" : "Pagar"} por {formatMoney(offer.price)} <ArrowRight /></> : <>Salvar dados e preencher briefing <ArrowRight /></>}</Button>
+      </div>
+    </>}
+    {collectPayment && checkoutStep === 2 ? <p className="flex items-center justify-center gap-2 text-xs text-white/38"><LockKeyhole className="h-3.5 w-3.5" />Seus dados de cartão não são armazenados pela Omi.</p> : null}
   </form>
 }

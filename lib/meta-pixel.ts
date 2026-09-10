@@ -25,6 +25,10 @@ const META_EVENT_NAMES = {
 
 export type MetaEventType = keyof typeof META_EVENT_NAMES
 
+export function isMetaEventType(eventType: string): eventType is MetaEventType {
+  return eventType in META_EVENT_NAMES
+}
+
 export function initializeMetaPixel() {
   if (typeof window === "undefined" || navigator.doNotTrack === "1" || window.fbq) return
   const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "1744943553413898"
