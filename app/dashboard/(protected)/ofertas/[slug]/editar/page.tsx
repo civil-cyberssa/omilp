@@ -1,7 +1,10 @@
 "use client"
+import Link from "next/link"
 import useSWR from "swr"
+import { ArrowLeft } from "lucide-react"
 import { OfferForm } from "@/components/dashboard/offer-form"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DashboardOffer, dashboardFetcher } from "@/lib/dashboard-api"
 import { use } from "react"
-export default function EditOfferPage({params}:{params:Promise<{slug:string}>}){const {slug}=use(params);const {data,error,mutate}=useSWR<DashboardOffer>(`/api/backoffice/offers/${slug}`,dashboardFetcher);if(error)return <p className="text-destructive">Oferta não encontrada.</p>;if(!data)return <Skeleton className="mx-auto h-[600px] max-w-4xl"/>;return <div className="mx-auto max-w-4xl space-y-7"><div><p className="text-sm font-medium text-[#155EEF]">Catálogo</p><h1 className="mt-1 text-3xl font-semibold">Editar oferta</h1></div><OfferForm offer={data} onSaved={async (saved) => { await mutate(saved, { revalidate: false }) }}/></div>}
+export default function EditOfferPage({params}:{params:Promise<{slug:string}>}){const {slug}=use(params);const {data,error,mutate}=useSWR<DashboardOffer>(`/api/backoffice/offers/${slug}`,dashboardFetcher);if(error)return <p className="text-destructive">Oferta não encontrada.</p>;if(!data)return <Skeleton className="mx-auto h-[600px] max-w-4xl"/>;return <div className="mx-auto max-w-4xl space-y-7"><div className="flex items-center gap-3"><Button asChild type="button" variant="outline" size="icon"><Link href="/dashboard/ofertas" aria-label="Voltar para todas as ofertas"><ArrowLeft className="h-4 w-4" /></Link></Button><div><p className="text-sm font-medium text-[#155EEF]">Catálogo</p><h1 className="mt-1 text-3xl font-semibold">Editar oferta</h1></div></div><OfferForm offer={data} onSaved={async (saved) => { await mutate(saved, { revalidate: false }) }}/></div>}
