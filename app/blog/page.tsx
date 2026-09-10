@@ -61,7 +61,7 @@ function LatestPost({ post, alsoMostRead }: { post: BlogPost; alsoMostRead: bool
             <span className="bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-[#07143D]">Mais recente</span>
             {alsoMostRead ? <span className="border border-[#D000B8]/40 bg-[#D000B8]/15 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[.18em] text-[#F5B8EC]">Mais lido</span> : null}
           </div>
-          <p className="mt-8 text-xs font-semibold uppercase tracking-[.24em] text-[#8EA8FF]">{post.category?.name ?? "Caderno Omi"}</p>
+          <p className="mt-8 text-xs font-semibold uppercase tracking-[.24em] text-[#8EA8FF]">{post.category?.name ?? "Omi"}</p>
           <h2 className="mt-4 text-3xl font-semibold leading-[1.06] tracking-[-.04em] transition group-hover:text-[#B9B4FF] md:text-5xl">{post.title}</h2>
           <p className="mt-5 line-clamp-3 text-sm leading-7 text-white/55">{post.excerpt}</p>
         </div>
@@ -87,7 +87,7 @@ function MostReadPost({ post }: { post: BlogPost }) {
       <div className="relative mt-7 aspect-[16/10] overflow-hidden bg-[#07143D]">
         <PostVisual post={post} />
       </div>
-      <p className="mt-7 text-[10px] font-semibold uppercase tracking-[.22em] text-[#8EA8FF]">{post.category?.name ?? "Caderno Omi"}</p>
+      <p className="mt-7 text-[10px] font-semibold uppercase tracking-[.22em] text-[#8EA8FF]">{post.category?.name ?? "Omi"}</p>
       <h2 className="mt-3 text-2xl font-semibold leading-tight tracking-[-.03em] transition group-hover:text-[#B9B4FF]">{post.title}</h2>
       <p className="mt-4 line-clamp-2 text-sm leading-6 text-white/50">{post.excerpt}</p>
       <div className="mt-auto flex items-center justify-between border-t border-white/10 pt-5 text-xs text-white/38">
@@ -108,24 +108,42 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
   const activeCategory = categories.some((category) => category.slug === categorySlug) ? categorySlug : undefined
   const posts = activeCategory ? allPosts.filter((post) => post.category?.slug === activeCategory) : allPosts
   const latestPost = posts[0] ?? null
-  const mostReadPost = getMostReadBlogPost(posts)
+  const mostReadPost = getMostReadBlogPost(posts.filter((post) => post.id !== latestPost?.id)) ?? latestPost
   const activeCategoryName = categories.find((category) => category.slug === activeCategory)?.name
+  const featuredPostIds = new Set([latestPost?.id, mostReadPost?.id].filter(Boolean))
+  const archivePosts = posts.filter((post) => !featuredPostIds.has(post.id))
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#020617] text-[#F8FAFC]">
       <Navbar />
-      <section className="relative border-b border-white/10 px-6 pb-16 pt-36 md:pb-24 md:pt-44">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_16%,rgba(21,94,239,.24),transparent_29%),radial-gradient(circle_at_82%_76%,rgba(208,0,184,.18),transparent_28%),linear-gradient(135deg,#020617_0%,#07143D_55%,#17062D_100%)]" />
-        <div className="absolute inset-0 opacity-[0.055] [background-image:linear-gradient(rgba(255,255,255,.7)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.7)_1px,transparent_1px)] [background-size:48px_48px]" />
+      <section className="relative border-b border-white/10 px-6 pb-14 pt-32 md:pb-20 md:pt-40">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_16%,rgba(21,94,239,.22),transparent_32%),linear-gradient(120deg,#020617_0%,#050b21_62%,#07143D_100%)]" />
+        <div className="absolute inset-y-0 right-[12%] hidden w-px bg-gradient-to-b from-transparent via-[#155EEF]/45 to-transparent lg:block" />
         <div className="container relative mx-auto max-w-6xl">
-          <div className="grid items-end gap-12 lg:grid-cols-[1fr_22rem]">
-            <div>
-              <div className="mb-7 flex items-center gap-3 bg-gradient-to-r from-[#155EEF] via-[#7C2AE8] to-[#D000B8] bg-clip-text text-xs font-semibold uppercase tracking-[0.3em] text-transparent">
-                <span className="h-px w-10 bg-gradient-to-r from-[#155EEF] to-[#D000B8]" /> Caderno Omi
-              </div>
-              <h1 className="max-w-4xl text-5xl font-semibold leading-[0.96] tracking-[-0.055em] md:text-7xl lg:text-[6.4rem]">Tecnologia sem o ruído.</h1>
+          <div className="grid gap-12 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-16">
+            <div className="flex flex-row items-center gap-5 lg:flex-col lg:items-start lg:border-t lg:border-white/20 lg:pt-5">
+              <p className="text-xs font-bold uppercase tracking-[.25em] text-[#8EA8FF]">Blog da Omi</p>
+              <span className="h-1 w-1 rounded-full bg-[#D000B8] lg:hidden" />
+              <p className="text-xs text-white/42">
+                {allPosts.length} {allPosts.length === 1 ? "artigo publicado" : "artigos publicados"}
+              </p>
             </div>
-            <p className="border-l border-[#7C2AE8]/60 pl-6 text-base leading-7 text-white/58">Notas de campo sobre produtos digitais, engenharia e as escolhas que fazem uma empresa avançar.</p>
+            <div>
+              <h1 className="max-w-4xl text-5xl font-semibold leading-[.98] tracking-[-.055em] md:text-7xl lg:text-[5.7rem]">
+                Por trás de produtos digitais que funcionam.
+              </h1>
+              <div className="mt-9 grid gap-7 border-t border-white/12 pt-7 md:grid-cols-[minmax(0,34rem)_1fr] md:items-end">
+                <p className="text-base leading-7 text-white/58 md:text-lg md:leading-8">
+                  Análises práticas sobre produto, engenharia e crescimento — dos primeiros esboços às decisões que sustentam o negócio.
+                </p>
+                {latestPost ? (
+                  <Link href={`/blog/${latestPost.slug}`} className="group flex items-center justify-between gap-4 border-l border-[#155EEF]/70 pl-5 text-sm font-semibold text-white/75 transition hover:text-white md:justify-self-end">
+                    <span><span className="mb-1 block text-[10px] uppercase tracking-[.2em] text-white/35">Leitura mais recente</span>{latestPost.title}</span>
+                    <ArrowUpRight className="h-4 w-4 shrink-0 text-[#8EA8FF] transition group-hover:translate-x-1 group-hover:-translate-y-1" />
+                  </Link>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -142,33 +160,37 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
         </div>
       </section>
 
-      <section className="container mx-auto max-w-6xl px-6 py-14 md:py-20">
+      <section id="artigos" className="container mx-auto max-w-6xl scroll-mt-24 px-6 py-14 md:py-20">
         {latestPost && mostReadPost ? (
           <>
             <div className="mb-7 flex items-end justify-between gap-6">
               <div><p className="text-xs font-bold uppercase tracking-[.22em] text-[#8EA8FF]">Seleção editorial</p><h2 className="mt-2 text-2xl font-semibold tracking-[-.03em] md:text-3xl">Para começar a leitura.</h2></div>
               {activeCategoryName ? <p className="hidden text-sm text-white/42 sm:block">Destaques em {activeCategoryName}</p> : null}
             </div>
-            <div className="grid gap-5 lg:grid-cols-[1.65fr_.85fr]">
+            <div className={cn("grid gap-5", latestPost.id !== mostReadPost.id && "lg:grid-cols-[1.65fr_.85fr]")}>
               <LatestPost post={latestPost} alsoMostRead={latestPost.id === mostReadPost.id} />
-              <MostReadPost post={mostReadPost} />
+              {latestPost.id !== mostReadPost.id ? <MostReadPost post={mostReadPost} /> : null}
             </div>
 
-            <div className="mb-8 mt-20 flex items-end justify-between gap-5 border-b border-white/12 pb-5">
-              <div><p className="text-xs font-bold uppercase tracking-[.22em] text-[#8EA8FF]">Arquivo completo</p><h2 className="mt-2 text-3xl font-semibold tracking-[-.035em]">{activeCategoryName ?? "Todos os artigos"}</h2></div>
-              <p className="text-xs text-white/38">{posts.length} {posts.length === 1 ? "artigo" : "artigos"}</p>
-            </div>
-            <div className="grid gap-x-6 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
-              {posts.map((post) => (
-                <Link key={post.id} href={`/blog/${post.slug}`} className="group flex flex-col border-t border-white/15 pt-5">
-                  <div className="relative aspect-[16/9] overflow-hidden bg-[#07143D]"><PostVisual post={post} /></div>
-                  <div className="mt-5 flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[.2em] text-white/38"><span>{post.category?.name ?? "Caderno Omi"}</span><span className="flex items-center gap-1.5"><Eye className="h-3 w-3" />{post.view_count.toLocaleString("pt-BR")}</span></div>
-                  <h3 className="mt-5 text-2xl font-semibold leading-tight tracking-[-.025em] transition group-hover:text-[#B9B4FF]">{post.title}</h3>
-                  <p className="mt-4 line-clamp-3 text-sm leading-6 text-white/50">{post.excerpt}</p>
-                  <div className="mt-auto flex items-center justify-between border-b border-white/8 py-6 text-xs text-white/36"><span>{formatPostDate(post.published_at)}</span><span className="flex items-center gap-2">{post.reading_time} min <ArrowUpRight className="h-4 w-4 text-[#D000B8] transition group-hover:translate-x-1 group-hover:-translate-y-1" /></span></div>
-                </Link>
-              ))}
-            </div>
+            {archivePosts.length ? (
+              <>
+                <div className="mb-8 mt-20 flex items-end justify-between gap-5 border-b border-white/12 pb-5">
+                  <div><p className="text-xs font-bold uppercase tracking-[.22em] text-[#8EA8FF]">Mais para explorar</p><h2 className="mt-2 text-3xl font-semibold tracking-[-.035em]">{activeCategoryName ?? "Todos os artigos"}</h2></div>
+                  <p className="text-xs text-white/38">{archivePosts.length} {archivePosts.length === 1 ? "artigo" : "artigos"}</p>
+                </div>
+                <div className="grid gap-x-6 gap-y-12 md:grid-cols-2 lg:grid-cols-3">
+                  {archivePosts.map((post) => (
+                    <Link key={post.id} href={`/blog/${post.slug}`} className="group flex flex-col border-t border-white/15 pt-5">
+                      <div className="relative aspect-[16/9] overflow-hidden bg-[#07143D]"><PostVisual post={post} /></div>
+                      <div className="mt-5 flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[.2em] text-white/38"><span>{post.category?.name ?? "Omi"}</span><span className="flex items-center gap-1.5"><Eye className="h-3 w-3" />{post.view_count.toLocaleString("pt-BR")}</span></div>
+                      <h3 className="mt-5 text-2xl font-semibold leading-tight tracking-[-.025em] transition group-hover:text-[#B9B4FF]">{post.title}</h3>
+                      <p className="mt-4 line-clamp-3 text-sm leading-6 text-white/50">{post.excerpt}</p>
+                      <div className="mt-auto flex items-center justify-between border-b border-white/8 py-6 text-xs text-white/36"><span>{formatPostDate(post.published_at)}</span><span className="flex items-center gap-2">{post.reading_time} min <ArrowUpRight className="h-4 w-4 text-[#D000B8] transition group-hover:translate-x-1 group-hover:-translate-y-1" /></span></div>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </>
         ) : (
           <div className="mx-auto max-w-2xl border border-white/12 bg-white/[0.025] px-8 py-16 text-center md:px-14">
