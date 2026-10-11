@@ -44,6 +44,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -80,9 +81,11 @@ export function CalendarOverview() {
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [selectedEvent, setSelectedEvent] = useState<DashboardCalendarEvent | null>(null)
+  const [selectedEventIds, setSelectedEventIds] = useState<string[]>([])
   const [editingEvent, setEditingEvent] = useState<DashboardCalendarEvent | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [bulkDeleteConfirmOpen, setBulkDeleteConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const gridStart = startOfWeek(startOfMonth(visibleMonth))
   const gridEnd = endOfWeek(endOfMonth(visibleMonth))
@@ -108,11 +111,30 @@ export function CalendarOverview() {
     return grouped
   }, [events])
   const selectedEvents = eventsByDate.get(format(selectedDate, "yyyy-MM-dd")) ?? []
+  const allSelected = selectedEvents.length > 0 && selectedEventIds.length === selectedEvents.length
 
   function changeMonth(offset: number) {
     const nextMonth = startOfMonth(addMonths(visibleMonth, offset))
     setVisibleMonth(nextMonth)
     setSelectedDate(nextMonth)
+    setSelectedEventIds([])
+  }
+
+  function selectDate(day: Date) {
+    setSelectedDate(day)
+    setSelectedEventIds([])
+  }
+
+  function toggleEventSelection(eventId: string, checked: boolean) {
+    setSelectedEventIds((current) => (
+      checked
+        ? [...current, eventId]
+        : current.filter((id) => id !== eventId)
+    ))
+  }
+
+  function toggleAllEvents() {
+    setSelectedEventIds(allSelected ? [] : selectedEvents.map((event) => event.id))
   }
 
   function openCreate() {
@@ -130,6 +152,7 @@ export function CalendarOverview() {
     const savedDate = new Date(`${event.event_date}T12:00:00`)
     setSelectedDate(savedDate)
     setVisibleMonth(startOfMonth(savedDate))
+    setSelectedEventIds([])
     await mutate()
     setSelectedEvent(event)
   }
@@ -143,11 +166,36 @@ export function CalendarOverview() {
         { method: "DELETE" },
       )
       setDeleteConfirmOpen(false)
+      setSelectedEventIds((current) => current.filter((id) => id !== selectedEvent.id))
       setSelectedEvent(null)
       await mutate()
       toast.success("Evento excluído com sucesso.")
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : "Não foi possível excluir o evento.")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  async function deleteSelectedEvents() {
+    if (selectedEventIds.length === 0) return
+    setDeleting(true)
+    try {
+      await Promise.all(selectedEventIds.map((eventId) => dashboardMutation(
+        `/api/backoffice/calendar-events/${encodeURIComponent(eventId)}`,
+        { method: "DELETE" },
+      )))
+      const deletedCount = selectedEventIds.length
+      setBulkDeleteConfirmOpen(false)
+      setSelectedEventIds([])
+      await mutate()
+      toast.success(
+        deletedCount === 1
+          ? "Evento excluído com sucesso."
+          : `${deletedCount} eventos excluídos com sucesso.`,
+      )
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : "Não foi possível excluir os eventos.")
     } finally {
       setDeleting(false)
     }
@@ -212,7 +260,7 @@ export function CalendarOverview() {
                   <button
                     type="button"
                     key={dateKey}
-                    onClick={() => setSelectedDate(day)}
+                    onClick={() => selectDate(day)}
                     aria-label={format(day, "d 'de' MMMM", { locale: ptBR })}
                     className={cn(
                       "min-h-16 bg-background p-1.5 text-left transition hover:bg-[#4338FF]/[.035] sm:min-h-24 sm:p-2",
@@ -289,27 +337,66 @@ export function CalendarOverview() {
               </div>
             ) : (
               <div className="mt-4 space-y-3">
-                {selectedEvents.map((event) => (
-                  <button
+                <div className="flex flex-wrap items-center gap-2 border-b pb-3">
+                  <Button
                     type="button"
-                    key={event.id}
-                    onClick={() => setSelectedEvent(event)}
-                    className="block w-full rounded-xl border bg-background p-3.5 text-left transition hover:border-[#4338FF]/35 hover:shadow-[0_10px_28px_rgba(67,56,255,.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4338FF]"
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleAllEvents}
+                    aria-pressed={allSelected}
+                    className="h-8 flex-1 px-2 text-xs"
                   >
-                    <div className="flex items-start gap-2">
-                      <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", dotColors[event.event_type])} />
-                      <div className="min-w-0">
-                        <p className={cn("text-sm font-medium", event.is_completed && "line-through opacity-55")}>{event.title}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {event.event_type_label}
-                          {event.customer_name ? ` · ${event.customer_name}` : ""}
-                        </p>
-                        {event.amount !== null ? (
-                          <p className="mt-2 text-sm font-semibold">{formatMoney(event.amount)}</p>
-                        ) : null}
+                    {allSelected ? "Desmarcar todos" : "Selecionar todos"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={selectedEventIds.length === 0}
+                    onClick={() => setBulkDeleteConfirmOpen(true)}
+                    className="h-8 flex-1 px-2 text-xs"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {selectedEventIds.length > 0
+                      ? `Excluir (${selectedEventIds.length})`
+                      : "Excluir selecionados"}
+                  </Button>
+                </div>
+                {selectedEvents.map((event) => (
+                  <div
+                    key={event.id}
+                    className={cn(
+                      "flex items-start gap-3 rounded-xl border bg-background p-3.5 transition hover:border-[#4338FF]/35 hover:shadow-[0_10px_28px_rgba(67,56,255,.08)]",
+                      selectedEventIds.includes(event.id) && "border-[#4338FF]/40 bg-[#4338FF]/[.035]",
+                    )}
+                  >
+                    <Checkbox
+                      checked={selectedEventIds.includes(event.id)}
+                      onCheckedChange={(checked) => toggleEventSelection(event.id, checked === true)}
+                      aria-label={`Selecionar ${event.title}`}
+                      className="mt-0.5"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSelectedEvent(event)}
+                      aria-label={`Ver detalhes de ${event.title}`}
+                      className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4338FF] focus-visible:ring-offset-2"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", dotColors[event.event_type])} />
+                        <div className="min-w-0">
+                          <p className={cn("text-sm font-medium", event.is_completed && "line-through opacity-55")}>{event.title}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {event.event_type_label}
+                            {event.customer_name ? ` · ${event.customer_name}` : ""}
+                          </p>
+                          {event.amount !== null ? (
+                            <p className="mt-2 text-sm font-semibold">{formatMoney(event.amount)}</p>
+                          ) : null}
+                        </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -362,6 +449,30 @@ export function CalendarOverview() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction disabled={deleting} onClick={(event) => { event.preventDefault(); void deleteSelectedEvent() }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{deleting ? "Excluindo..." : "Excluir evento"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={bulkDeleteConfirmOpen} onOpenChange={(open) => { if (!deleting) setBulkDeleteConfirmOpen(open) }}>
+        <AlertDialogContent className="omi-dashboard border-black/10 bg-white text-[#020617]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {selectedEventIds.length === 1
+                ? "Excluir o evento selecionado?"
+                : `Excluir os ${selectedEventIds.length} eventos selecionados?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação remove {selectedEventIds.length === 1 ? "o evento" : "os eventos"} do calendário e não pode ser desfeita. Pedidos ou assinaturas associados não serão excluídos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(event) => { event.preventDefault(); void deleteSelectedEvents() }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Excluindo..." : "Excluir selecionados"}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

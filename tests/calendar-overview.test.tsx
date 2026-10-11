@@ -147,4 +147,66 @@ describe("calendário do dashboard", () => {
     expect(mutate).toHaveBeenCalled()
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
   })
+
+  it("seleciona eventos do dia e habilita a exclusão", async () => {
+    const secondEvent = {
+      ...existingEvent,
+      id: "event-2",
+      title: "Enviar proposta",
+    }
+    useSWR.mockReturnValue({
+      data: { count: 2, next: null, previous: null, results: [existingEvent, secondEvent] },
+      error: undefined,
+      isLoading: false,
+      mutate,
+    })
+
+    render(<CalendarOverview />)
+
+    const deleteButton = screen.getByRole("button", { name: /excluir selecionados/i })
+    expect(deleteButton).toBeDisabled()
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /selecionar reunião de alinhamento/i }))
+    expect(screen.getByRole("button", { name: "Excluir (1)" })).toBeEnabled()
+
+    fireEvent.click(screen.getByRole("button", { name: /selecionar todos/i }))
+    expect(screen.getByRole("checkbox", { name: /selecionar reunião de alinhamento/i })).toBeChecked()
+    expect(screen.getByRole("checkbox", { name: /selecionar enviar proposta/i })).toBeChecked()
+    expect(screen.getByRole("button", { name: "Excluir (2)" })).toBeEnabled()
+  })
+
+  it("exclui todos os eventos selecionados após confirmação", async () => {
+    const secondEvent = {
+      ...existingEvent,
+      id: "event-2",
+      title: "Enviar proposta",
+    }
+    useSWR.mockReturnValue({
+      data: { count: 2, next: null, previous: null, results: [existingEvent, secondEvent] },
+      error: undefined,
+      isLoading: false,
+      mutate,
+    })
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(null, { status: 204 }),
+    )
+
+    render(<CalendarOverview />)
+    fireEvent.click(screen.getByRole("button", { name: /selecionar todos/i }))
+    fireEvent.click(screen.getByRole("button", { name: "Excluir (2)" }))
+
+    const confirmation = await screen.findByRole("alertdialog")
+    fireEvent.click(within(confirmation).getByRole("button", { name: /excluir selecionados/i }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/backoffice/calendar-events/event-1",
+      expect.objectContaining({ method: "DELETE" }),
+    )
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/backoffice/calendar-events/event-2",
+      expect.objectContaining({ method: "DELETE" }),
+    )
+    expect(mutate).toHaveBeenCalled()
+  })
 })
