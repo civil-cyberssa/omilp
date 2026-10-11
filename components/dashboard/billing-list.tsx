@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DashboardOrder, DashboardSubscription, PagedResponse, dashboardFetcher, formatDashboardDate } from "@/lib/dashboard-api"
+import { DashboardOrder, DashboardSubscription, PagedResponse, dashboardFetcher, formatDashboardDate, formatDashboardDateTime } from "@/lib/dashboard-api"
 import { formatMoney } from "@/lib/commerce"
 
 const labels: Record<string, string> = {
@@ -46,7 +46,7 @@ export function BillingList({ type }: { type: "orders" | "subscriptions" }) {
     <div className="overflow-hidden rounded-xl border bg-card">
       {isLoading ? <div className="space-y-3 p-6">{[1, 2, 3].map((item) => <Skeleton key={item} className="h-12" />)}</div>
         : error ? <p className="p-12 text-center text-destructive">Não foi possível carregar.</p>
-          : <Table><TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Oferta</TableHead><TableHead>Valor</TableHead><TableHead>Status</TableHead><TableHead>Criado</TableHead><TableHead /></TableRow></TableHeader><TableBody>{data?.results.map((item) => <TableRow key={item.id}><TableCell>{item.customer ? <><p className="font-medium">{item.customer.name}</p><p className="text-xs text-muted-foreground">{item.customer.email}</p></> : <p className="text-sm text-muted-foreground">Aguardando preenchimento</p>}</TableCell><TableCell>{item.offer.name}</TableCell><TableCell>{formatMoney("total" in item ? item.total : item.value)}</TableCell><TableCell><Badge variant={["PAID", "ACTIVE"].includes(item.status) ? "default" : "secondary"}>{labels[item.status] ?? item.status}</Badge></TableCell><TableCell>{formatDashboardDate(item.created_at)}</TableCell><TableCell><Button asChild variant="ghost" size="sm"><Link href={`/dashboard/${isOrders ? "pedidos" : "assinaturas"}/${item.id}`}>Detalhes</Link></Button></TableCell></TableRow>)}</TableBody></Table>}
+          : <Table><TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Oferta</TableHead><TableHead>Valor</TableHead><TableHead>Status</TableHead><TableHead>Criado</TableHead><TableHead /></TableRow></TableHeader><TableBody>{data?.results.map((item) => <TableRow key={item.id}><TableCell>{item.customer ? <><p className="font-medium">{item.customer.name}</p><p className="text-xs text-muted-foreground">{item.customer.email}</p></> : <p className="text-sm text-muted-foreground">Aguardando preenchimento</p>}</TableCell><TableCell>{item.offer.name}</TableCell><TableCell>{formatMoney("total" in item ? item.total : item.value)}</TableCell><TableCell><Badge variant={["PAID", "ACTIVE"].includes(item.status) ? "default" : "secondary"}>{labels[item.status] ?? item.status}</Badge></TableCell><TableCell>{isOrders ? formatDashboardDateTime(item.created_at) : formatDashboardDate(item.created_at)}</TableCell><TableCell><Button asChild variant="ghost" size="sm"><Link href={`/dashboard/${isOrders ? "pedidos" : "assinaturas"}/${item.id}`}>Detalhes</Link></Button></TableCell></TableRow>)}</TableBody></Table>}
     </div>
   </div>
 }

@@ -113,11 +113,44 @@ export type BillingCustomer = {
   street?: string; address_number?: string; address_complement?: string; neighborhood?: string
   city?: string; city_code?: string; postal_code?: string; state?: string; country?: string
 }
+export type DashboardBriefing = {
+  id: string
+  project_name: string
+  business_description: string
+  goals: string
+  target_audience: string
+  visual_references: string
+  desired_pages: string[]
+  brand_assets_url: string
+  extra_data: {
+    domain?: { has_domain?: boolean; current?: string; desired_options?: string[] }
+    brand_colors?: { unsure?: boolean; name?: string; hex?: string; hexes?: string[] }
+    color_to_avoid?: string
+  }
+  status: string
+  edited_at: string | null
+  created_at: string
+  updated_at: string
+}
+export type DashboardAsaasLogEntry = {
+  payment_id: string
+  event_id: string
+  event_type: string
+  status: string
+  billing_type: string
+  value: string
+  net_value: string | null
+  due_date: string
+  paid_at: string | null
+  received_at: string
+  processed: boolean
+  error: string
+}
 export type DashboardOrder = {
   id: string; customer: BillingCustomer | null; offer: DashboardOffer; status: string; billing_type: string
   base_price: string | null; discount_type: "PERCENTAGE" | "FIXED"; discount_value: string
   discount_percentage: string; is_manual: boolean; total: string; due_date: string
-  notes: string; checkout_url: string; payment_link: string; monthly_change_request_limit: number; created_at: string; updated_at: string
+  notes: string; briefing: DashboardBriefing | null; asaas_log: DashboardAsaasLogEntry[]; checkout_url: string; payment_link: string; monthly_change_request_limit: number; created_at: string; updated_at: string
 }
 export type DashboardSubscription = {
   id: string; customer: BillingCustomer; offer: DashboardOffer; status: string; billing_type: string
