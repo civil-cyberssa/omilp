@@ -13,6 +13,7 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { TurnstileWidget } from "@/components/turnstile-widget"
 import { formatApiError } from "@/lib/client-api-error"
 import { trackCheckoutError } from "@/lib/checkout-error-analytics"
 import { cycleLabel, formatMoney } from "@/lib/commerce"
@@ -370,6 +371,8 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
   const [result, setResult] = useState<CheckoutResult | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [checkoutStep, setCheckoutStep] = useState<1 | 2>(1)
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null)
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0)
   const formRef = useRef<HTMLFormElement | null>(null)
   const idempotencyKey = useRef<string | null>(null)
   const checkoutTracked = useRef(false)
@@ -489,7 +492,14 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
 
   async function submit(values: Values) {
     setSubmitError(null)
-    const requestPayload = collectPayment ? { ...values, offer: offer.slug } : { customer: values.customer }
+    if (!turnstileToken) {
+      const message = "Confirme a verificação de segurança antes de continuar."
+      setSubmitError(message)
+      return void toast.error(message)
+    }
+    const requestPayload = collectPayment
+      ? { ...values, offer: offer.slug, turnstile_token: turnstileToken }
+      : { customer: values.customer, turnstile_token: turnstileToken }
     try {
       idempotencyKey.current ??= crypto.randomUUID()
       const response = await fetch(endpoint, {
@@ -505,6 +515,7 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
         const parsed = await response.json()
         data = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : { value: parsed }
       } catch {
+        setTurnstileResetKey((current) => current + 1)
         const message = `Resposta inválida recebida do checkout (HTTP ${response.status || 502}).`
         setSubmitError(message)
         void trackCheckoutError({
@@ -523,6 +534,7 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
         return void toast.error(message)
       }
       if (!response.ok) {
+        setTurnstileResetKey((current) => current + 1)
         const message = formatApiError(response.status, data)
         setSubmitError(message)
         void trackCheckoutError({
@@ -543,6 +555,7 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
       }
       const pix = data.pix && typeof data.pix === "object" ? data.pix as Record<string, unknown> : null
       if (collectPayment && values.billing_type === "PIX" && !pix?.payload) {
+        setTurnstileResetKey((current) => current + 1)
         const message = "Erro 502 · O Asaas não retornou o QR Code Pix."
         setSubmitError(message)
         void trackCheckoutError({
@@ -573,6 +586,7 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
         content_id: offer.slug,
       })
     } catch (error) {
+      setTurnstileResetKey((current) => current + 1)
       const message = "Erro de conexão: não foi possível processar o pagamento. Não tente novamente antes de conferir seu pedido."
       setSubmitError(message)
       void trackCheckoutError({
@@ -684,11 +698,12 @@ export function CheckoutForm({ offer, endpoint = "/api/checkout", initialCustome
     </div> : null}</> : null}
 
     {submitError ? <p role="alert" className="rounded-xl border border-pink-400/25 bg-pink-400/[.07] px-4 py-3 text-sm text-pink-200">{submitError}</p> : null}
+    {!collectPayment || checkoutStep === 2 ? <TurnstileWidget onToken={setTurnstileToken} resetKey={turnstileResetKey} /> : null}
     {collectPayment && checkoutStep === 1 ? <Button type="button" onClick={continueToPayment} className="h-12 w-full rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] text-white hover:brightness-110">Continuar para pagamento <ArrowRight /></Button> : <>
       {collectPayment ? <p className="text-center text-xs leading-5 text-white/45">{usesAutomaticPix && billingType === "PIX" ? "Pix Automático mensal. O primeiro pagamento confirma sua autorização para as próximas cobranças." : isSubscription ? `Assinatura com cobrança a cada ${cycleLabel[offer.cycle] ?? "período"}. Pagamento processado pelo Asaas.` : "Pagamento único processado pelo Asaas."}</p> : null}
       <div className="flex flex-col-reverse gap-3 sm:flex-row">
         {collectPayment ? <Button type="button" variant="outline" onClick={() => setCheckoutStep(1)} className="h-12 border-white/15 bg-white/[.04] text-white hover:bg-white/10">Voltar aos dados</Button> : null}
-        <Button type="submit" disabled={isSubmitting} className="h-12 flex-1 rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] text-white hover:brightness-110">{isSubmitting ? <><Loader2 className="animate-spin" />Processando com segurança</> : collectPayment ? <>{isSubscription ? "Assinar" : "Pagar"} por {formatMoney(offer.price)} <ArrowRight /></> : <>Salvar dados e preencher briefing <ArrowRight /></>}</Button>
+        <Button type="submit" disabled={isSubmitting || !turnstileToken} className="h-12 flex-1 rounded-full bg-gradient-to-r from-[#155EEF] via-[#4338FF] to-[#D000B8] text-white hover:brightness-110">{isSubmitting ? <><Loader2 className="animate-spin" />Processando com segurança</> : collectPayment ? <>{isSubscription ? "Assinar" : "Pagar"} por {formatMoney(offer.price)} <ArrowRight /></> : <>Salvar dados e preencher briefing <ArrowRight /></>}</Button>
       </div>
     </>}
     {collectPayment && checkoutStep === 2 ? <p className="flex items-center justify-center gap-2 text-xs text-white/38"><LockKeyhole className="h-3.5 w-3.5" />Seus dados de cartão não são armazenados pela Omi.</p> : null}

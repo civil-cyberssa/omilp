@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 
 import { apiError, readUpstreamJson, withRouteErrorHandling } from "@/lib/api-response"
+import { checkoutSecurityHeaders } from "@/lib/checkout-security"
 import { setPurchaseCookie } from "@/lib/portal-auth"
 import { backendEndpoint, validateMutationOrigin } from "@/lib/server-auth"
 
@@ -39,16 +40,21 @@ export async function POST(request: NextRequest, { params }: Context) {
       "Content-Type": "application/json",
       "Idempotency-Key": idempotencyKey,
     })
-    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-      || request.headers.get("x-real-ip")?.trim()
-    if (clientIp) {
-      headers.set("X-Checkout-Client-IP", clientIp)
-      headers.set("X-Checkout-Internal-Key", process.env.CHECKOUT_CLIENT_IP_KEY ?? "")
+    const securityHeaders = checkoutSecurityHeaders(request)
+    if (!securityHeaders) {
+      return apiError(503, "CHECKOUT_SECURITY_UNAVAILABLE", { message: "A proteção do checkout está indisponível." })
     }
+    const payload = await request.json() as Record<string, unknown>
+    const turnstileToken = typeof payload.turnstile_token === "string" ? payload.turnstile_token.trim() : ""
+    if (!turnstileToken || turnstileToken.length > 2048) {
+      return apiError(400, "TURNSTILE_REQUIRED", { message: "Confirme a verificação de segurança." })
+    }
+    headers.set("X-Checkout-Client-IP", securityHeaders["X-Checkout-Client-IP"])
+    headers.set("X-Checkout-Internal-Key", securityHeaders["X-Checkout-Internal-Key"])
     const backend = await fetch(backendEndpoint(backendPath(token)), {
       method: "POST",
       headers,
-      body: JSON.stringify(await request.json()),
+      body: JSON.stringify(payload),
       cache: "no-store",
     })
     const parsed = await readUpstreamJson<{ briefing_token?: string; [key: string]: unknown }>(backend)
