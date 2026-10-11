@@ -31,12 +31,14 @@ jobs:
     steps:
       - name: Checkout exact commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
 
       - name: Scan current tree for secrets
         run: >-
           docker run --rm -v "$PWD:/repo:ro"
           zricethezav/gitleaks:v8.28.0@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854
-          dir /repo --redact --no-banner --exit-code=1
+          git /repo --redact --no-banner --exit-code=1
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
