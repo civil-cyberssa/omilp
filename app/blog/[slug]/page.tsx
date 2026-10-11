@@ -72,6 +72,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               Artigo Omi<br />Conhecimento aplicado
             </div>
           </aside>
+          {/* nosemgrep: typescript.react.security.audit.react-dangerouslysetinnerhtml.react-dangerouslysetinnerhtml -- Post.content is sanitized with nh3 before every backend write. */}
           <div className="prose prose-lg prose-slate max-w-none prose-headings:text-[#020617] prose-headings:tracking-[-0.025em] prose-a:text-[#155EEF] prose-a:decoration-[#D000B8] prose-strong:text-[#020617] prose-blockquote:border-[#7C2AE8] prose-blockquote:text-[#07143D]/70" dangerouslySetInnerHTML={{ __html: post.content }} />
         </div>
       </article>

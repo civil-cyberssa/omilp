@@ -2,4 +2,8 @@ allowBuilds:
   esbuild: true
   unrs-resolver: true
 minimumReleaseAgeExclude:
-  - nodemailer@9.0.6
+  - nodemailer@10.0.16
+overrides:
+  sharp: 0.35.5
+  source-map-js: 1.2.2
+  vite>esbuild: 0.28.1
