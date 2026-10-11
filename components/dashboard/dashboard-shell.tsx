@@ -6,7 +6,7 @@ import { signOut } from "next-auth/react"
 import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import useSWR from "swr"
-import { BarChart3, BriefcaseBusiness, CreditCard, FileText, Files, Gauge, Inbox, Layers3, LogOut, Menu, PanelLeftClose, RefreshCw } from "lucide-react"
+import { BarChart3, BriefcaseBusiness, CreditCard, FileText, Files, Gauge, Inbox, Layers3, LogOut, Menu, PanelLeftClose, RefreshCw, UserRound } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
@@ -23,6 +23,7 @@ const navigation = [
   { label: "Assinaturas", href: "/dashboard/assinaturas", icon: RefreshCw },
   { label: "Projetos", href: "/dashboard/projetos", icon: BriefcaseBusiness },
   { label: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { label: "Meu perfil", href: "/dashboard/perfil", icon: UserRound },
 ]
 
 function SidebarContent({ close }: { close?: () => void }) {
@@ -88,7 +89,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Abrir menu"><Menu className="h-5 w-5" /></Button>
           <div className="hidden items-center gap-2 text-xs uppercase tracking-[0.2em] text-black/35 lg:flex"><PanelLeftClose className="h-4 w-4" /> Central de conteúdo</div>
           <div className="ml-auto flex items-center gap-3">
-            <div className="hidden text-right sm:block"><p className="text-sm font-medium">{user.full_name}</p><p className="text-xs text-black/45">{user.email}</p></div>
+            <Link href="/dashboard/perfil" className="hidden rounded-lg px-2 py-1 text-right transition hover:bg-[#4338FF]/5 sm:block"><p className="text-sm font-medium">{user.full_name}</p><p className="text-xs text-black/45">{user.email}</p></Link>
             <Button variant="outline" size="sm" onClick={logout} className="border-black/15 bg-transparent"><LogOut className="mr-2 h-4 w-4" /> Sair</Button>
           </div>
         </header>

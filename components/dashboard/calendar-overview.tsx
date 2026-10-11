@@ -26,7 +26,7 @@ import {
   WalletCards,
 } from "lucide-react"
 import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import useSWR from "swr"
 
@@ -70,14 +70,17 @@ const eventColors: Record<CalendarEventType, string> = {
   PAYMENT: "border-emerald-200 bg-emerald-50 text-emerald-700",
   CHARGE: "border-amber-200 bg-amber-50 text-amber-700",
   DEADLINE: "border-violet-200 bg-violet-50 text-violet-700",
+  OTHER: "border-blue-200 bg-blue-50 text-blue-700",
 }
 const dotColors: Record<CalendarEventType, string> = {
   PAYMENT: "bg-emerald-500",
   CHARGE: "bg-amber-500",
   DEADLINE: "bg-violet-500",
+  OTHER: "bg-blue-500",
 }
 
 export function CalendarOverview() {
+  const googleSyncStarted = useRef(false)
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()))
   const [selectedDate, setSelectedDate] = useState(() => new Date())
   const [selectedEvent, setSelectedEvent] = useState<DashboardCalendarEvent | null>(null)
@@ -96,6 +99,18 @@ export function CalendarOverview() {
     query,
     dashboardFetcher,
   )
+  const { data: googleStatus } = useSWR<{ connected: boolean }>(
+    "/api/backoffice/calendar/google/status",
+    dashboardFetcher,
+  )
+
+  useEffect(() => {
+    if (!googleStatus?.connected || googleSyncStarted.current) return
+    googleSyncStarted.current = true
+    void dashboardMutation("/api/backoffice/calendar/google/sync", { method: "POST" })
+      .then(() => mutate())
+      .catch(() => undefined)
+  }, [googleStatus?.connected, mutate])
   const events = useMemo(() => collectionResults(response), [response])
   const days = useMemo(
     () => Array.from({ length: 42 }, (_, index) => addDays(gridStart, index)),
@@ -307,10 +322,10 @@ export function CalendarOverview() {
               })}
             </div>
             <div className="mt-4 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground">
-              {(["PAYMENT", "CHARGE", "DEADLINE"] as const).map((type) => (
+              {(["PAYMENT", "CHARGE", "DEADLINE", "OTHER"] as const).map((type) => (
                 <span key={type} className="flex items-center gap-1.5">
                   <span className={cn("h-2 w-2 rounded-full", dotColors[type])} />
-                  {{ PAYMENT: "Pagamento", CHARGE: "Cobrança", DEADLINE: "Prazo" }[type]}
+                  {{ PAYMENT: "Pagamento", CHARGE: "Cobrança", DEADLINE: "Prazo", OTHER: "Outro" }[type]}
                 </span>
               ))}
             </div>
