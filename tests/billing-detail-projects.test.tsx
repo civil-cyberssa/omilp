@@ -21,7 +21,7 @@ vi.mock("sonner", () => ({
 
 const order = {
   id: "order-1",
-  customer: { id: "customer-1", name: "Cliente", email: "cliente@example.com", phone: "", company: "", cpf_cnpj: "" },
+  customer: { id: "customer-1", name: "Cliente", email: "cliente@example.com", phone: "", company: "", cpf_cnpj: "24971563792" },
   offer: { id: "offer-1", name: "Site institucional" },
   status: "PAID",
   billing_type: "PIX",
@@ -63,6 +63,13 @@ describe("BillingDetail projects", () => {
 
     const links = screen.getAllByRole("link", { name: "Adicionar projeto" })
     expect(links[0]).toHaveAttribute("href", "/dashboard/projetos/novo?type=order&id=order-1")
+  })
+
+  it("exibe o CPF ou CNPJ formatado nos dados do cliente", () => {
+    render(<BillingDetail type="orders" id="order-1" />)
+
+    expect(screen.getByText("CPF/CNPJ")).toBeInTheDocument()
+    expect(screen.getByText("249.715.637-92")).toBeInTheDocument()
   })
 
   it("exibe o briefing vinculado ao pedido", () => {
@@ -116,6 +123,32 @@ describe("BillingDetail projects", () => {
     expect(screen.getByText("Pagamento recebido")).toBeInTheDocument()
     expect(screen.getByText("pay_123")).toBeInTheDocument()
     expect(screen.getByText("evt_123")).toBeInTheDocument()
+  })
+
+  it("exibe uma recusa de cartão mesmo sem pagamento criado", () => {
+    mocks.asaasLog = [{
+      payment_id: "",
+      event_id: "",
+      event_type: "PAYMENT_REJECTED",
+      status: "FAILED",
+      billing_type: "CREDIT_CARD",
+      value: "500.00",
+      net_value: null,
+      due_date: "2026-09-03",
+      paid_at: null,
+      received_at: "2026-09-03T12:05:00Z",
+      processed: true,
+      error: "Transação não autorizada. Verifique os dados do cartão de crédito e tente novamente.",
+      error_code: "invalid_creditCard",
+      http_status: 400,
+    }]
+
+    render(<BillingDetail type="orders" id="order-1" />)
+
+    expect(screen.getByText("Pagamento recusado")).toBeInTheDocument()
+    expect(screen.getByText("invalid_creditCard")).toBeInTheDocument()
+    expect(screen.getByText(/Transação não autorizada/)).toBeInTheDocument()
+    expect(screen.queryByText("ID do pagamento")).not.toBeInTheDocument()
   })
 
   it("mostra e permite gerenciar o projeto relacionado", () => {

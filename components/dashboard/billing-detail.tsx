@@ -93,9 +93,9 @@ export function BillingDetail({ type, id }: { type: "orders" | "subscriptions"; 
     <div><p className="text-sm font-medium text-[#155EEF]">Financeiro</p><h1 className="mt-1 text-3xl font-semibold">{isOrder ? "Pedido" : "Assinatura"}</h1><p className="mt-2 font-mono text-xs text-muted-foreground">{data.id}</p></div>
     <div className="grid gap-5 lg:grid-cols-2">
       <Card><CardHeader><CardTitle>Contratação</CardTitle></CardHeader><CardContent className="space-y-4"><Row label="Oferta" value={data.offer.name} />{isOrder && data.base_price && Number(data.discount_value) > 0 ? <><Row label="Preço original" value={formatMoney(data.base_price)} /><Row label="Desconto" value={data.discount_type === "FIXED" ? formatMoney(data.discount_value) : `${Number(data.discount_value).toLocaleString("pt-BR")}%`} /></> : null}<Row label="Valor" value={formatMoney(isOrder ? data.total : data.value)} />{!isOrder ? <Row label="Ciclo" value={cycleLabel[data.cycle] ?? data.cycle} /> : null}<Row label="Criado em" value={formatDashboardDateTime(data.created_at)} />{data.payment_link ? <Button type="button" className="w-full" onClick={() => sharePaymentLink(data.payment_link, data.offer.name)}><Send className="h-4 w-4" />Enviar link da oferta</Button> : null}{data.checkout_url ? <a href={data.checkout_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm font-medium text-[#4338FF]">Abrir checkout <ExternalLink className="h-4 w-4" /></a> : null}</CardContent></Card>
-      <Card><CardHeader><CardTitle>Cliente</CardTitle></CardHeader><CardContent className="space-y-4">{data.customer ? <><Row label="Nome" value={data.customer.name} /><Row label="E-mail" value={data.customer.email} /><Row label="Telefone" value={data.customer.phone || "—"} /><Row label="Empresa" value={data.customer.company || "—"} /></> : <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Os dados serão preenchidos pelo cliente através do link da oferta.</p>}</CardContent></Card>
+      <Card><CardHeader><CardTitle>Cliente</CardTitle></CardHeader><CardContent className="space-y-4">{data.customer ? <><Row label="Nome" value={data.customer.name} /><Row label="CPF/CNPJ" value={formatCustomerDocument(data.customer.cpf_cnpj)} /><Row label="E-mail" value={data.customer.email} /><Row label="Telefone" value={data.customer.phone || "—"} /><Row label="Empresa" value={data.customer.company || "—"} /></> : <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Os dados serão preenchidos pelo cliente através do link da oferta.</p>}</CardContent></Card>
       {isOrder ? <BriefingCard briefing={data.briefing} /> : null}
-      <Card className="lg:col-span-2"><CardHeader><CardTitle>Status financeiro</CardTitle></CardHeader><CardContent><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center"><div><Badge>{data.status}</Badge><p className="mt-3 text-xs text-muted-foreground">O pagamento é atualizado somente pelos webhooks do Asaas.</p></div><div className="flex flex-wrap gap-2">{canCancel ? <Button variant="destructive" disabled={canceling || deleting} onClick={cancel}>{canceling ? <><Loader2 className="animate-spin" />Cancelando</> : isOrder ? "Cancelar no Asaas" : "Cancelar assinatura"}</Button> : null}{canDelete ? <Button variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive" disabled={canceling || deleting} onClick={remove}>{deleting ? <><Loader2 className="animate-spin" />Excluindo</> : <><Trash2 />Excluir {isOrder ? "pedido" : "assinatura"}</>}</Button> : null}</div></div>{cancelError ? <p className="mt-4 text-sm text-destructive">{cancelError}</p> : null}{isOrder ? <AsaasLog entries={data.asaas_log} /> : null}</CardContent></Card>
+      <Card className="lg:col-span-2"><CardHeader><CardTitle>Status financeiro</CardTitle></CardHeader><CardContent><div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center"><div><Badge>{data.status}</Badge><p className="mt-3 text-xs text-muted-foreground">Confirmações são atualizadas pelos webhooks do Asaas; recusas do checkout também ficam registradas.</p></div><div className="flex flex-wrap gap-2">{canCancel ? <Button variant="destructive" disabled={canceling || deleting} onClick={cancel}>{canceling ? <><Loader2 className="animate-spin" />Cancelando</> : isOrder ? "Cancelar no Asaas" : "Cancelar assinatura"}</Button> : null}{canDelete ? <Button variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive" disabled={canceling || deleting} onClick={remove}>{deleting ? <><Loader2 className="animate-spin" />Excluindo</> : <><Trash2 />Excluir {isOrder ? "pedido" : "assinatura"}</>}</Button> : null}</div></div>{cancelError ? <p className="mt-4 text-sm text-destructive">{cancelError}</p> : null}{isOrder ? <AsaasLog entries={data.asaas_log} /> : null}</CardContent></Card>
       <Card className="lg:col-span-2"><CardHeader><CardTitle>Solicitações de alteração</CardTitle></CardHeader><CardContent><form action={saveLimit} className="flex flex-col gap-3 sm:flex-row sm:items-end"><div className="flex-1 space-y-2"><label htmlFor="monthly_change_request_limit" className="text-sm font-medium">Limite mensal específico</label><input id="monthly_change_request_limit" name="monthly_change_request_limit" type="number" min="0" defaultValue={data.monthly_change_request_limit} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" /></div><Button disabled={limitSaving}>{limitSaving ? <><Loader2 className="animate-spin" />Salvando</> : "Salvar limite"}</Button></form>{limitError ? <p className="mt-3 text-sm text-destructive">{limitError}</p> : null}<p className="mt-3 text-xs text-muted-foreground">Este valor substitui o limite copiado da oferta para esta contratação.</p></CardContent></Card>
       <Card className="lg:col-span-2">
         <CardHeader className="flex-row items-center justify-between gap-4"><div><CardTitle>Projeto relacionado</CardTitle><p className="mt-1 text-sm text-muted-foreground">Site publicado vinculado a esta contratação.</p></div>{relatedProjects?.results.length === 0 ? <Button asChild><Link href={`/dashboard/projetos/novo?type=${projectSource}&id=${id}`}><Plus />Adicionar projeto</Link></Button> : null}</CardHeader>
@@ -107,6 +107,13 @@ export function BillingDetail({ type, id }: { type: "orders" | "subscriptions"; 
 
 function Row({ label, value }: { label: string; value: string }) { return <div className="flex justify-between gap-4 border-b pb-3 last:border-0"><span className="text-sm text-muted-foreground">{label}</span><span className="text-right text-sm font-medium">{value}</span></div> }
 
+function formatCustomerDocument(value: string) {
+  const digits = value.replace(/\D/g, "")
+  if (digits.length === 11) return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4")
+  if (digits.length === 14) return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, "$1.$2.$3/$4-$5")
+  return value || "—"
+}
+
 const asaasEventLabels: Record<string, string> = {
   PAYMENT_CREATED: "Pagamento criado",
   PAYMENT_RECEIVED: "Pagamento recebido",
@@ -116,10 +123,34 @@ const asaasEventLabels: Record<string, string> = {
   PAYMENT_REFUNDED: "Pagamento estornado",
   PAYMENT_PARTIALLY_REFUNDED: "Estorno parcial",
   PAYMENT_DELETED: "Pagamento removido",
+  PAYMENT_REJECTED: "Pagamento recusado",
 }
 
 function AsaasLog({ entries }: { entries: DashboardAsaasLogEntry[] }) {
-  return <div className="mt-6 border-t pt-6"><div className="flex items-center gap-2"><Activity className="h-4 w-4 text-[#155EEF]" /><h3 className="text-sm font-semibold">Log do Asaas</h3></div>{entries.length === 0 ? <p className="mt-3 rounded-lg border border-dashed p-5 text-sm text-muted-foreground">Nenhum retorno do Asaas foi registrado para este pedido.</p> : <div className="mt-4 space-y-3">{entries.map((entry) => <div key={`${entry.payment_id}-${entry.event_id}`} className="rounded-lg border bg-muted/20 p-4"><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start"><div><div className="flex flex-wrap items-center gap-2"><p className="text-sm font-medium">{asaasEventLabels[entry.event_type] ?? entry.event_type}</p><Badge variant="outline">{entry.status}</Badge>{!entry.processed ? <Badge variant="destructive">Falha no processamento</Badge> : null}</div><p className="mt-1 text-xs text-muted-foreground">Recebido em {formatDashboardDateTime(entry.received_at)}</p></div><p className="text-sm font-semibold">{formatMoney(entry.value)}</p></div>{entry.error ? <p className="mt-3 rounded-md bg-destructive/10 p-3 text-xs text-destructive">{entry.error}</p> : null}<dl className="mt-4 grid gap-3 border-t pt-3 text-xs sm:grid-cols-2"><div><dt className="text-muted-foreground">ID do pagamento</dt><dd className="mt-1 break-all font-mono">{entry.payment_id}</dd></div><div><dt className="text-muted-foreground">ID do evento</dt><dd className="mt-1 break-all font-mono">{entry.event_id || "—"}</dd></div></dl></div>)}</div>}</div>
+  return <div className="mt-6 border-t pt-6">
+    <div className="flex items-center gap-2"><Activity className="h-4 w-4 text-[#155EEF]" /><h3 className="text-sm font-semibold">Log do Asaas</h3></div>
+    {entries.length === 0
+      ? <p className="mt-3 rounded-lg border border-dashed p-5 text-sm text-muted-foreground">Nenhum retorno do Asaas foi registrado para este pedido.</p>
+      : <div className="mt-4 space-y-3">{entries.map((entry, index) => <div key={`${entry.payment_id}-${entry.event_id}-${entry.received_at}-${index}`} className="rounded-lg border bg-muted/20 p-4">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium">{asaasEventLabels[entry.event_type] ?? entry.event_type}</p>
+              <Badge variant="outline">{entry.status}</Badge>
+              {entry.error_code ? <Badge variant="destructive">{entry.error_code}</Badge> : null}
+              {!entry.processed ? <Badge variant="destructive">Falha no processamento</Badge> : null}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Recebido em {formatDashboardDateTime(entry.received_at)}</p>
+          </div>
+          <p className="text-sm font-semibold">{formatMoney(entry.value)}</p>
+        </div>
+        {entry.error ? <p className="mt-3 rounded-md bg-destructive/10 p-3 text-xs text-destructive">{entry.error}</p> : null}
+        {entry.payment_id || entry.event_id ? <dl className="mt-4 grid gap-3 border-t pt-3 text-xs sm:grid-cols-2">
+          <div><dt className="text-muted-foreground">ID do pagamento</dt><dd className="mt-1 break-all font-mono">{entry.payment_id || "—"}</dd></div>
+          <div><dt className="text-muted-foreground">ID do evento</dt><dd className="mt-1 break-all font-mono">{entry.event_id || "—"}</dd></div>
+        </dl> : null}
+      </div>)}</div>}
+  </div>
 }
 
 function BriefingCard({ briefing }: { briefing: DashboardBriefing | null }) {
