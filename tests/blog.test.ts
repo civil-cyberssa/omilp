@@ -26,8 +26,9 @@ describe("listagem pública do blog", () => {
   it("carrega todas as páginas disponíveis na API", async () => {
     const first = post("primeiro", "2026-01-01T12:00:00Z", 2)
     const second = post("segundo", "2026-02-01T12:00:00Z", 4)
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
     const fetchMock = vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce(Response.json({ results: [first], next: "http://localhost:8000/api/v1/blog/posts/?page=2&page_size=100" }))
+      .mockResolvedValueOnce(Response.json({ results: [first], next: `${apiUrl}/blog/posts/?page=2&page_size=100` }))
       .mockResolvedValueOnce(Response.json({ results: [second], next: null }))
 
     await expect(getBlogPosts()).resolves.toEqual([first, second])

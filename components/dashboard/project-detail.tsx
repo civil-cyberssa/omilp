@@ -1,6 +1,6 @@
 "use client"
 
-import { ExternalLink, Eye, EyeOff, Loader2 } from "lucide-react"
+import { ExternalLink, Loader2 } from "lucide-react"
 import { useState } from "react"
 import useSWR from "swr"
 
@@ -39,25 +39,26 @@ export function ProjectDetail({ id }: { id: string }) {
 
 function ProjectInfrastructureForm({ project, onSaved }: { project: DashboardProject; onSaved: () => Promise<DashboardProject | undefined> }) {
   const [hostingProvider, setHostingProvider] = useState(project.hosting_provider)
-  const [passwordVisible, setPasswordVisible] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState("")
 
   async function save(formData: FormData) {
     setSaving(true); setMessage("")
     try {
+      const password = formData.get("domain_access_password")
+      const payload: Record<string, FormDataEntryValue | string> = {
+        site: formData.get("site") ?? "",
+        repository_url: formData.get("repository_url") ?? "",
+        hosting_provider: hostingProvider,
+        domain_access_url: formData.get("domain_access_url") ?? "",
+        domain_access_username: formData.get("domain_access_username") ?? "",
+        notes: formData.get("notes") ?? "",
+      }
+      if (password) payload.domain_access_password = password
       await dashboardMutation(`/api/backoffice/projects/${project.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          site: formData.get("site"),
-          repository_url: formData.get("repository_url"),
-          hosting_provider: hostingProvider,
-          domain_access_url: formData.get("domain_access_url"),
-          domain_access_username: formData.get("domain_access_username"),
-          domain_access_password: formData.get("domain_access_password"),
-          notes: formData.get("notes"),
-        }),
+        body: JSON.stringify(payload),
       })
       await onSaved()
       setMessage("Informações atualizadas.")
@@ -68,7 +69,7 @@ function ProjectInfrastructureForm({ project, onSaved }: { project: DashboardPro
     }
   }
 
-  return <Card><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>Infraestrutura e acessos</CardTitle><Badge variant="outline">Somente equipe</Badge></div></CardHeader><CardContent><form action={save} className="grid gap-4 sm:grid-cols-2"><ProjectField id="project-site" name="site" label="Site publicado" value={project.site} type="url" required /><ProjectField id="project-repository" name="repository_url" label="Repositório" value={project.repository_url} type="url" /><div className="space-y-2"><Label>Host de hospedagem</Label><Select value={hostingProvider} onValueChange={(value) => setHostingProvider(value as DashboardProject["hosting_provider"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="VERCEL">Vercel</SelectItem><SelectItem value="AWS">AWS</SelectItem></SelectContent></Select></div><ProjectField id="domain-access-url" name="domain_access_url" label="Link de acesso ao domínio" value={project.domain_access_url} type="url" /><ProjectField id="domain-access-username" name="domain_access_username" label="Usuário do domínio" value={project.domain_access_username} autoComplete="off" /><div className="space-y-2"><Label htmlFor="domain-access-password">Senha do domínio</Label><div className="relative"><Input id="domain-access-password" name="domain_access_password" defaultValue={project.domain_access_password} type={passwordVisible ? "text" : "password"} autoComplete="new-password" className="pr-10" /><Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0" onClick={() => setPasswordVisible((visible) => !visible)} aria-label={passwordVisible ? "Ocultar senha" : "Exibir senha"}>{passwordVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button></div></div><div className="space-y-2 sm:col-span-2"><Label htmlFor="project-notes">Observações</Label><Textarea id="project-notes" name="notes" rows={5} defaultValue={project.notes} /></div>{project.site ? <a href={project.site} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-primary">Abrir site <ExternalLink className="h-4 w-4" /></a> : null}<div className="flex items-center justify-end gap-3 sm:col-span-2">{message ? <p role="status" className="mr-auto text-sm text-muted-foreground">{message}</p> : null}<Button disabled={saving}>{saving ? <><Loader2 className="animate-spin" />Salvando</> : "Salvar informações"}</Button></div></form></CardContent></Card>
+  return <Card><CardHeader><div className="flex items-center justify-between gap-3"><CardTitle>Infraestrutura e acessos</CardTitle><Badge variant="outline">Somente equipe</Badge></div></CardHeader><CardContent><form action={save} className="grid gap-4 sm:grid-cols-2"><ProjectField id="project-site" name="site" label="Site publicado" value={project.site} type="url" required /><ProjectField id="project-repository" name="repository_url" label="Repositório" value={project.repository_url} type="url" /><div className="space-y-2"><Label>Host de hospedagem</Label><Select value={hostingProvider} onValueChange={(value) => setHostingProvider(value as DashboardProject["hosting_provider"])}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="VERCEL">Vercel</SelectItem><SelectItem value="AWS">AWS</SelectItem></SelectContent></Select></div><ProjectField id="domain-access-url" name="domain_access_url" label="Link de acesso ao domínio" value={project.domain_access_url} type="url" /><ProjectField id="domain-access-username" name="domain_access_username" label="Usuário do domínio" value={project.domain_access_username} autoComplete="off" /><div className="space-y-2"><Label htmlFor="domain-access-password">Substituir senha do domínio</Label><Input id="domain-access-password" name="domain_access_password" type="password" autoComplete="new-password" placeholder="Deixe em branco para manter a senha atual" /></div><div className="space-y-2 sm:col-span-2"><Label htmlFor="project-notes">Observações</Label><Textarea id="project-notes" name="notes" rows={5} defaultValue={project.notes} /></div>{project.site ? <a href={project.site} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-sm text-primary">Abrir site <ExternalLink className="h-4 w-4" /></a> : null}<div className="flex items-center justify-end gap-3 sm:col-span-2">{message ? <p role="status" className="mr-auto text-sm text-muted-foreground">{message}</p> : null}<Button disabled={saving}>{saving ? <><Loader2 className="animate-spin" />Salvando</> : "Salvar informações"}</Button></div></form></CardContent></Card>
 }
 
 function ProjectField({ id, name, label, value, type = "text", required = false, autoComplete }: { id: string; name: string; label: string; value: string; type?: string; required?: boolean; autoComplete?: string }) {
