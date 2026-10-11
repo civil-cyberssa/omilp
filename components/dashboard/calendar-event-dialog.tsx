@@ -131,6 +131,7 @@ export function CalendarEventDialog({
                   <SelectItem value="PAYMENT">Pagamento</SelectItem>
                   <SelectItem value="CHARGE">Cobrança</SelectItem>
                   <SelectItem value="DEADLINE">Prazo</SelectItem>
+                  <SelectItem value="OTHER">Outro</SelectItem>
                 </SelectContent>
               </Select>
             </div>
