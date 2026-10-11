@@ -13,7 +13,6 @@ const project = {
   hosting_provider: "AWS",
   domain_access_url: "https://registro.example.com",
   domain_access_username: "dominio@example.com",
-  domain_access_password: "senha-atual",
   notes: "Conta administrada pela equipe.",
   order: "order-1",
   subscription: null,
@@ -57,11 +56,10 @@ describe("ProjectDetail", () => {
 
     expect(screen.getByText("Somente equipe")).toBeInTheDocument()
     expect(screen.getByLabelText("Repositório")).toHaveValue("https://github.com/omi/cliente")
-    expect(screen.getByLabelText("Senha do domínio")).toHaveAttribute("type", "password")
-    fireEvent.click(screen.getByRole("button", { name: "Exibir senha" }))
-    expect(screen.getByLabelText("Senha do domínio")).toHaveAttribute("type", "text")
+    expect(screen.getByLabelText("Substituir senha do domínio")).toHaveValue("")
+    expect(screen.queryByRole("button", { name: "Exibir senha" })).not.toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText("Senha do domínio"), { target: { value: "senha-nova" } })
+    fireEvent.change(screen.getByLabelText("Substituir senha do domínio"), { target: { value: "senha-nova" } })
     fireEvent.click(screen.getByRole("button", { name: "Salvar informações" }))
 
     await waitFor(() => expect(mocks.dashboardMutation).toHaveBeenCalledTimes(1))

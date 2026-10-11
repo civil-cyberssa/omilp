@@ -166,7 +166,6 @@ export type DashboardProject = {
   hosting_provider: "VERCEL" | "AWS"
   domain_access_url: string
   domain_access_username: string
-  domain_access_password: string
   notes: string
   order: string | null
   subscription: string | null
