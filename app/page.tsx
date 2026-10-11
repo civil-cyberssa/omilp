@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { headers } from "next/headers"
 
 import Navbar from "@/components/navbar"
 import HeroSection from "@/components/hero-section"
@@ -91,10 +92,12 @@ function jsonLd(value: object) {
   return JSON.stringify(value).replace(/</g, "\\u003c")
 }
 
-export default function Home() {
+export default async function Home() {
+  const nonce = (await headers()).get("x-nonce") ?? undefined
   return (
     <main className="min-h-screen bg-black text-white overflow-hidden">
       <script
+        nonce={nonce}
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(homeStructuredData) }}
       />

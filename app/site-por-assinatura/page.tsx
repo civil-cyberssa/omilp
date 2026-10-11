@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { headers } from "next/headers"
 import Image from "next/image"
 import {
   ArrowDown,
@@ -180,6 +181,7 @@ function jsonLd(value: object) {
 }
 
 export default async function SitePorAssinaturaPage() {
+  const nonce = (await headers()).get("x-nonce") ?? undefined
   const offers = await getOffers()
   const visibleOffers = offers.filter(
     (offer) => offer.is_active
@@ -245,7 +247,7 @@ export default async function SitePorAssinaturaPage() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#f7f8fb] text-[#0a1021]">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }} />
+      <script nonce={nonce} type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(structuredData) }} />
       <Navbar />
 
       <section className="relative isolate flex min-h-[680px] items-center overflow-hidden bg-[#02040b] px-6 py-32 text-white md:min-h-[760px] md:py-40">
