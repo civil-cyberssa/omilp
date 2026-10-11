@@ -21,7 +21,7 @@ vi.mock("sonner", () => ({
 
 const order = {
   id: "order-1",
-  customer: { id: "customer-1", name: "Cliente", email: "cliente@example.com", phone: "", company: "", cpf_cnpj: "" },
+  customer: { id: "customer-1", name: "Cliente", email: "cliente@example.com", phone: "", company: "", cpf_cnpj: "24971563792" },
   offer: { id: "offer-1", name: "Site institucional" },
   status: "PAID",
   billing_type: "PIX",
@@ -63,6 +63,13 @@ describe("BillingDetail projects", () => {
 
     const links = screen.getAllByRole("link", { name: "Adicionar projeto" })
     expect(links[0]).toHaveAttribute("href", "/dashboard/projetos/novo?type=order&id=order-1")
+  })
+
+  it("exibe o CPF ou CNPJ formatado nos dados do cliente", () => {
+    render(<BillingDetail type="orders" id="order-1" />)
+
+    expect(screen.getByText("CPF/CNPJ")).toBeInTheDocument()
+    expect(screen.getByText("249.715.637-92")).toBeInTheDocument()
   })
 
   it("exibe o briefing vinculado ao pedido", () => {

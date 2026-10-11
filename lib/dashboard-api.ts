@@ -103,6 +103,23 @@ export type AuthUser = {
   first_name: string
   last_name: string
   full_name: string
+  phone: string
+}
+
+export type GoogleCalendarStatus = {
+  configured: boolean
+  connected: boolean
+  calendar_name: string
+  last_synced_at: string | null
+}
+
+export type GoogleCalendarSyncResult = {
+  imported: number
+  updated: number
+  deleted: number
+  exported: number
+  failed: number
+  last_synced_at: string
 }
 
 export type DashboardOffer = {
@@ -212,7 +229,7 @@ export type DashboardDocument = {
   updated_at: string
 }
 
-export type CalendarEventType = "PAYMENT" | "CHARGE" | "DEADLINE"
+export type CalendarEventType = "PAYMENT" | "CHARGE" | "DEADLINE" | "OTHER"
 export type DashboardCalendarEvent = {
   id: string
   title: string
@@ -220,7 +237,12 @@ export type DashboardCalendarEvent = {
   event_type: CalendarEventType
   event_type_label: string
   event_date: string
+  starts_at?: string | null
+  ends_at?: string | null
+  is_all_day?: boolean
+  all_day_duration_days?: number
   is_completed: boolean
+  source?: "LOCAL" | "GOOGLE"
   order: string | null
   subscription: string | null
   payment: string | null
@@ -229,6 +251,8 @@ export type DashboardCalendarEvent = {
   amount: number | null
   customer_name: string
   created_by_name: string
+  google_html_link?: string
+  google_sync_status?: "local" | "synced" | "failed"
   created_at: string
   updated_at: string
 }
