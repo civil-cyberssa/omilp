@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { headers } from 'next/headers'
 import Script from 'next/script'
 import { Suspense } from 'react'
 import './globals.css'
@@ -240,11 +241,12 @@ const structuredData = {
   ],
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined
   return (
     <html lang="pt-BR">
       <body>
@@ -252,10 +254,11 @@ export default function RootLayout({
           <AnalyticsTracker />
         </Suspense>
         <Script
+          nonce={nonce}
           src="https://www.googletagmanager.com/gtag/js?id=G-RKLNFK03PK"
           strategy="afterInteractive"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="google-analytics" nonce={nonce} strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -264,6 +267,7 @@ export default function RootLayout({
           `}
         </Script>
         <script
+          nonce={nonce}
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />

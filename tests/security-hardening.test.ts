@@ -9,7 +9,7 @@ vi.mock("@/lib/contact-email-service", () => ({ sendContactEmail }))
 vi.mock("@/lib/server-auth", () => ({ validateMutationOrigin }))
 
 import { POST } from "@/app/api/contact/route"
-import { buildSecurityHeaders } from "@/lib/security-headers.mjs"
+import { buildContentSecurityPolicy, buildSecurityHeaders } from "@/lib/security-headers.mjs"
 
 function contactRequest(
   body: Record<string, unknown> | string,
@@ -106,9 +106,13 @@ describe("hardening do frontend", () => {
         .map(({ key, value }) => [key, value]),
     )
 
-    expect(headers.get("Content-Security-Policy")).toContain("object-src 'none'")
-    expect(headers.get("Content-Security-Policy")).toContain("frame-src https:")
-    expect(headers.get("Content-Security-Policy")).toContain("frame-ancestors 'none'")
+    const csp = buildContentSecurityPolicy("https://api.omi.test/api/v1", true, "test-nonce")
+    expect(csp).toContain("object-src 'none'")
+    expect(csp).toContain("frame-src https:")
+    expect(csp).toContain("frame-ancestors 'none'")
+    expect(csp).toContain("'nonce-test-nonce'")
+    expect(csp).toContain("'strict-dynamic'")
+    expect(csp).not.toContain("script-src 'self' 'unsafe-inline'")
     expect(headers.get("X-Content-Type-Options")).toBe("nosniff")
     expect(headers.get("X-Frame-Options")).toBe("DENY")
     expect(headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin")
