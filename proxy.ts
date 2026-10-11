@@ -1,8 +1,10 @@
 import type { NextAuthRequest } from "next-auth"
+import { geolocation } from "@vercel/functions"
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server"
 
 import { auth } from "@/auth"
 import { PORTAL_COOKIE } from "@/lib/auth-config"
+import { isBrazilianAccessAllowed } from "@/lib/geo-access"
 import { buildContentSecurityPolicy } from "@/lib/security-headers.mjs"
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"
@@ -59,9 +61,24 @@ const authenticatedProxy = auth((request: NextAuthRequest, _event: NextFetchEven
 })
 
 export function proxy(request: NextRequest, event: NextFetchEvent) {
+  const enforceBrazilOnly = process.env.VERCEL === "1"
+  const country = enforceBrazilOnly ? geolocation(request).country : undefined
+  if (!isBrazilianAccessAllowed(country, enforceBrazilOnly)) {
+    return new NextResponse("Acesso disponível somente no Brasil.", {
+      status: 403,
+      headers: {
+        "Cache-Control": "private, no-store",
+        "Content-Type": "text/plain; charset=utf-8",
+        Vary: "x-vercel-ip-country",
+        "X-Content-Type-Options": "nosniff",
+      },
+    })
+  }
+
+  if (request.nextUrl.pathname.startsWith("/api/")) return NextResponse.next()
   return authenticatedProxy(request, event)
 }
 
 export const config = {
-  matcher: [{ source: "/((?!api|_next/static|_next/image|favicon.ico).*)" }],
+  matcher: [{ source: "/((?!_next/static|_next/image|favicon.ico).*)" }],
 }
