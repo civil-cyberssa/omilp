@@ -224,7 +224,9 @@ describe("CheckoutForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /continuar para pagamento/i }))
     await screen.findByRole("group", { name: "Forma de pagamento" })
-    fireEvent.click(screen.getByRole("button", { name: /assinar por/i }))
+    const submitButton = screen.getByRole("button", { name: /assinar por/i })
+    await waitFor(() => expect(submitButton).toBeEnabled())
+    fireEvent.click(submitButton)
 
     await waitFor(() => {
       const event = fetchMock.mock.calls
@@ -238,7 +240,7 @@ describe("CheckoutForm", () => {
           status_code: 422,
           request_payload: {
             offer: "essencial",
-            customer: { email: "maria@example.com", cpf_cnpj: "••••3792" },
+            customer: { email: "maria@example.com", cpf_cnpj: "24971563792" },
           },
           inputs: { customer: { name: "Maria Cliente", phone: "71999999999" } },
         },

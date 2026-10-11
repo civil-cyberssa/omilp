@@ -108,7 +108,8 @@ describe("hardening do frontend", () => {
 
     const csp = buildContentSecurityPolicy("https://api.omi.test/api/v1", true, "test-nonce")
     expect(csp).toContain("object-src 'none'")
-    expect(csp).toContain("frame-src https:")
+    expect(csp).toContain("frame-src https://challenges.cloudflare.com")
+    expect(csp).toContain("https://challenges.cloudflare.com")
     expect(csp).toContain("frame-ancestors 'none'")
     expect(csp).toContain("'nonce-test-nonce'")
     expect(csp).toContain("'strict-dynamic'")
