@@ -62,17 +62,17 @@ function formatCapturedJson(value: unknown) {
   }
 }
 
-function CheckoutErrors({ data }: { data: AnalyticsSummary }) {
+export function CheckoutErrors({ data }: { data: AnalyticsSummary }) {
   const errors = data.checkout_errors ?? []
   const types = data.checkout_error_types ?? []
   return <Card className="overflow-hidden border-rose-200 shadow-[0_16px_50px_rgba(225,29,72,.06)]">
     <CardHeader>
       <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-rose-600" />Erros na contratação</CardTitle>
-      <CardDescription>Ocorrências na jornada de checkout, com dados técnicos e valores sanitizados. Nome, e-mail e telefone ficam visíveis; documentos, endereço e informações financeiras permanecem protegidos.</CardDescription>
+      <CardDescription>Ocorrências na jornada de checkout abertas para diagnóstico. O JSON preserva os dados cadastrais enviados; somente credenciais e dados de cartão permanecem protegidos.</CardDescription>
       {types.length ? <div className="flex flex-wrap gap-2 pt-3">{types.map((item) => <span key={item.error_type || "unknown"} className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-medium text-rose-800">{checkoutErrorLabels[item.error_type] ?? item.error_type ?? "Não classificado"} · {formatNumber(item.count)}</span>)}</div> : null}
     </CardHeader>
     <CardContent className="p-0">
-      {errors.length ? <div className="divide-y">{errors.map((error) => <details key={error.id} className="group px-5 py-4 open:bg-muted/30">
+      {errors.length ? <div className="divide-y">{errors.map((error) => <details key={error.id} open className="group px-5 py-4 open:bg-muted/30">
         <summary className="grid cursor-pointer list-none gap-3 marker:hidden sm:grid-cols-[10rem_minmax(0,1fr)_auto] sm:items-center">
           <span className="text-xs text-muted-foreground">{formatDashboardDateTime(error.created_at)}</span>
           <span className="min-w-0"><span className="block truncate text-sm font-semibold">{checkoutErrorLabels[error.error_type] ?? error.error_type}</span><span className="block truncate font-mono text-[10px] text-muted-foreground">{error.error_code || "SEM_CÓDIGO"} · {error.endpoint || error.path}</span></span>

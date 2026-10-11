@@ -5,7 +5,7 @@ import { sanitizeCheckoutData, trackCheckoutError } from "@/lib/checkout-error-a
 afterEach(() => vi.restoreAllMocks())
 
 describe("analytics de erros do checkout", () => {
-  it("remove dados financeiros e mascara dados pessoais", () => {
+  it("preserva dados cadastrais e remove somente dados financeiros sensíveis", () => {
     expect(sanitizeCheckoutData({
       customer: {
         name: "Maria Cliente",
@@ -13,6 +13,7 @@ describe("analytics de erros do checkout", () => {
         phone: "71999999999",
         cpf_cnpj: "52998224725",
         street: "Rua Chile",
+        postal_code: "40020000",
       },
       credit_card: {
         number: "4444 4444 4444 4444",
@@ -25,8 +26,9 @@ describe("analytics de erros do checkout", () => {
         name: "Maria Cliente",
         email: "maria@example.com",
         phone: "71999999999",
-        cpf_cnpj: "••••4725",
-        street: "[preenchido]",
+        cpf_cnpj: "52998224725",
+        street: "Rua Chile",
+        postal_code: "40020000",
       },
       credit_card: {
         number: "••••4444",

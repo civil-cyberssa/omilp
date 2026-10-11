@@ -27,7 +27,6 @@ type CheckoutErrorDetails = {
 }
 
 const REDACTED = "[removido]"
-const FILLED = "[preenchido]"
 const sensitiveKeys = new Set([
   "authorization",
   "ccv",
@@ -37,15 +36,6 @@ const sensitiveKeys = new Set([
   "secret",
   "token",
 ])
-const identityKeys = new Set([
-  "address_complement",
-  "address_number",
-  "company",
-  "holder_name",
-  "neighborhood",
-  "street",
-])
-
 function lastDigits(value: unknown, visible = 4) {
   const digits = String(value ?? "").replace(/\D/g, "")
   return digits ? `••••${digits.slice(-visible)}` : REDACTED
@@ -67,10 +57,7 @@ function sanitizeValue(value: unknown, key = "", parentKey = "", depth = 0): unk
     (normalizedKey === "number" && normalizedParent === "credit_card")
     || ["card_number", "credit_card_number"].includes(normalizedKey)
   ) return lastDigits(value)
-  if (normalizedKey === "cpf_cnpj") return lastDigits(value)
-  if (normalizedKey === "postal_code") return lastDigits(value, 3)
   if (normalizedKey === "message") return sanitizeMessage(value)
-  if (identityKeys.has(normalizedKey)) return value ? FILLED : ""
   if (normalizedKey === "expiry_month" || normalizedKey === "expiry_year") return REDACTED
   if (Array.isArray(value)) {
     return value.slice(0, 20).map((item) => sanitizeValue(item, key, parentKey, depth + 1))
