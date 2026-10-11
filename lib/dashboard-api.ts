@@ -93,6 +93,8 @@ export type DashboardBillingOverview = {
   revenue: string
   asaas_available_balance: string | null
   asaas_balance_available: boolean
+  asaas_pending_amount: string | null
+  asaas_pending_amount_available: boolean
 }
 
 export type AuthUser = {
