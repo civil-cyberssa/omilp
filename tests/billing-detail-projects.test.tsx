@@ -118,6 +118,32 @@ describe("BillingDetail projects", () => {
     expect(screen.getByText("evt_123")).toBeInTheDocument()
   })
 
+  it("exibe uma recusa de cartão mesmo sem pagamento criado", () => {
+    mocks.asaasLog = [{
+      payment_id: "",
+      event_id: "",
+      event_type: "PAYMENT_REJECTED",
+      status: "FAILED",
+      billing_type: "CREDIT_CARD",
+      value: "500.00",
+      net_value: null,
+      due_date: "2026-09-03",
+      paid_at: null,
+      received_at: "2026-09-03T12:05:00Z",
+      processed: true,
+      error: "Transação não autorizada. Verifique os dados do cartão de crédito e tente novamente.",
+      error_code: "invalid_creditCard",
+      http_status: 400,
+    }]
+
+    render(<BillingDetail type="orders" id="order-1" />)
+
+    expect(screen.getByText("Pagamento recusado")).toBeInTheDocument()
+    expect(screen.getByText("invalid_creditCard")).toBeInTheDocument()
+    expect(screen.getByText(/Transação não autorizada/)).toBeInTheDocument()
+    expect(screen.queryByText("ID do pagamento")).not.toBeInTheDocument()
+  })
+
   it("mostra e permite gerenciar o projeto relacionado", () => {
     mocks.projectResults = [{
       id: "project-1",

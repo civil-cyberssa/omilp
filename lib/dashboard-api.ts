@@ -147,6 +147,8 @@ export type DashboardAsaasLogEntry = {
   received_at: string
   processed: boolean
   error: string
+  error_code?: string
+  http_status?: number | null
 }
 export type DashboardOrder = {
   id: string; customer: BillingCustomer | null; offer: DashboardOffer; status: string; billing_type: string
